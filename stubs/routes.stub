@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Support\Facades\Route;
+use JamesGifford\Hold\Http\Controllers\PreviewController;
+use JamesGifford\Hold\Http\Controllers\SignupController;
+use JamesGifford\Hold\Http\Controllers\UnsubscribeController;
+
+/*
+ * Hold package routes — self-hosted copy.
+ *
+ * Use this when you set `routes.register => false` in config/jamesgifford/hold.php
+ * and want to own routing entirely. Load it yourself, e.g. from a service
+ * provider or bootstrap/app.php:
+ *
+ *     Route::middleware('web')->prefix('hold')->group(base_path('routes/hold.php'));
+ *
+ * Keep the prefix in sync with config('jamesgifford.hold.routes.prefix'): the
+ * holding pages, the prelaunch allow-list, and the maintenance except-merge all
+ * read that value to know which URIs are "package routes".
+ *
+ * Signup stays CSRF-exempt for the reasons documented in the package: the
+ * holding pages can't embed a CSRF token, so honeypot + rate limiting guard it.
+ */
+
+Route::post('signup', [SignupController::class, 'store'])
+    ->name('hold.signup')
+    ->withoutMiddleware([PreventRequestForgery::class]);
+
+Route::get('unsubscribe/{signup}', UnsubscribeController::class)
+    ->name('hold.unsubscribe')
+    ->middleware('signed');
+
+Route::get('preview', PreviewController::class)
+    ->name('hold.preview')
+    ->middleware('signed');

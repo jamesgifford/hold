@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('hold_signups', function (Blueprint $table) {
+            $table->id();
+            $table->string('email')->unique();
+
+            // Which hold captured this address: 'prelaunch' or 'maintenance'.
+            // Drives which announcement (launch vs restored) the address gets.
+            $table->string('context');
+
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+
+            // Stamped when this address has been sent its announcement, so
+            // re-running announce never double-sends.
+            $table->timestamp('notified_at')->nullable();
+
+            // Soft unsubscribe: a non-null value means "do not email". Rows are
+            // never deleted, so an address that resubscribes keeps its history.
+            $table->timestamp('unsubscribed_at')->nullable();
+
+            $table->timestamps();
+
+            $table->index('context');
+            $table->index('notified_at');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('hold_signups');
+    }
+};
