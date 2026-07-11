@@ -6,24 +6,30 @@ namespace JamesGifford\Hold\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use JamesGifford\Hold\Events\SignupCaptured;
+use JamesGifford\Hold\Events\HoldSignupCaptured;
 use JamesGifford\Hold\Hold;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
-use JamesGifford\Hold\SignupContext;
 
 /**
  * Captures a public email signup from either holding page.
  *
- * Deliberately quiet: a bot-tripped honeypot, an over-the-limit IP, and a
- * duplicate address all return the SAME success response as a genuine new
- * signup, so the endpoint never reveals whether an address is already on the
- * list. Feedback travels back as a `?hold=` query param (see the views for why
- * session/flash can't be relied on here).
+ * Deliberately quiet: a bot-tripped honeypot, an over-the-limit IP, a same-cycle
+ * duplicate, and a genuinely new signup all return the SAME success response, so
+ * the endpoint never reveals whether an address is already on the list. Feedback
+ * travels back as a `?hold=` query param (see the views for why session/flash
+ * can't be relied on here).
+ *
+ * One row per email. Duplicate submissions are lifecycle-aware:
+ *  - same cycle (row not yet notified): write NOTHING — the row stays byte-identical;
+ *  - new hold (row already notified): re-arm it (reset notified_at/requested_at,
+ *    set the current context, refresh ip/ua) — never touching unsubscribed_at.
  */
-final class SignupController
+final class HoldSignupController
 {
     public function store(Request $request, HoldState $state): RedirectResponse
     {
@@ -53,25 +59,57 @@ final class SignupController
 
         RateLimiter::hit($key, 60);
 
+        $this->capture($request, $state);
+
+        return $this->back($request, 'subscribed');
+    }
+
+    /**
+     * Create, re-arm, or no-op the row for this email, then fire HoldSignupCaptured
+     * for genuinely new or re-armed rows (never for a same-cycle duplicate).
+     */
+    private function capture(Request $request, HoldState $state): void
+    {
         $email = Str::lower(trim((string) $request->input('email')));
         $context = $this->resolveContext($request, $state);
         $model = Hold::signupModel();
 
-        $signup = $model::query()->firstOrCreate(
-            ['email' => $email],
-            [
-                'context' => $context,
-                'ip_address' => $request->ip(),
-                'user_agent' => Str::limit((string) $request->userAgent(), 500, ''),
-            ],
-        );
+        $existing = $model::query()->where('email', $email)->first();
 
-        // Fire only for genuinely new rows so downstream receipts never double-send.
-        if ($signup->wasRecentlyCreated) {
-            event(new SignupCaptured($signup));
+        if ($existing === null) {
+            $signup = $model::query()->create([
+                'email' => $email,
+                'context' => $context,
+                'requested_at' => Carbon::now(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $this->userAgent($request),
+            ]);
+
+            event(new HoldSignupCaptured($signup));
+
+            return;
         }
 
-        return $this->back($request, 'subscribed');
+        // Same cycle (not yet notified): leave the row byte-identical.
+        if ($existing->notified_at === null) {
+            return;
+        }
+
+        // A new hold: re-arm. Never touch unsubscribed_at in either direction.
+        $existing->forceFill([
+            'context' => $context,
+            'requested_at' => Carbon::now(),
+            'notified_at' => null,
+            'ip_address' => $request->ip(),
+            'user_agent' => $this->userAgent($request),
+        ])->save();
+
+        event(new HoldSignupCaptured($existing));
+    }
+
+    private function userAgent(Request $request): string
+    {
+        return Str::limit((string) $request->userAgent(), 500, '');
     }
 
     /**
@@ -79,18 +117,18 @@ final class SignupController
      * the posted hidden field: maintenance first (the app is literally down),
      * then an active prelaunch hold, then the posted context as a fallback.
      */
-    private function resolveContext(Request $request, HoldState $state): SignupContext
+    private function resolveContext(Request $request, HoldState $state): HoldSignupContext
     {
         if (app()->isDownForMaintenance()) {
-            return SignupContext::Maintenance;
+            return HoldSignupContext::Maintenance;
         }
 
         if ($state->isActive()) {
-            return SignupContext::Prelaunch;
+            return HoldSignupContext::Prelaunch;
         }
 
-        return SignupContext::tryFrom((string) $request->input('context'))
-            ?? SignupContext::Prelaunch;
+        return HoldSignupContext::tryFrom((string) $request->input('context'))
+            ?? HoldSignupContext::Prelaunch;
     }
 
     /**

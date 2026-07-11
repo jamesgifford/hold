@@ -17,7 +17,6 @@ class RoutesDisabledTest extends TestCase
     public function test_it_registers_no_package_routes_when_disabled(): void
     {
         $this->assertFalse(Route::has('hold.signup'));
-        $this->assertFalse(Route::has('hold.unsubscribe'));
         $this->assertFalse(Route::has('hold.preview'));
     }
 
@@ -31,7 +30,6 @@ class RoutesDisabledTest extends TestCase
         Route::getRoutes()->refreshNameLookups();
 
         $this->assertTrue(Route::has('hold.signup'));
-        $this->assertTrue(Route::has('hold.unsubscribe'));
         $this->assertTrue(Route::has('hold.preview'));
 
         // And the signup endpoint actually functions.

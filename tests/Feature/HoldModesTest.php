@@ -6,9 +6,9 @@ use Illuminate\Foundation\Events\MaintenanceModeEnabled;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
 use JamesGifford\Hold\Jobs\SendAnnouncement;
-use JamesGifford\Hold\SignupContext;
 
 beforeEach(function () {
     Route::middleware('web')->get('/', fn () => 'REAL APP HOMEPAGE');
@@ -118,11 +118,11 @@ it('prefers the maintenance context for the announcement when both were active',
     // `up` schedules the maintenance announcement; the prelaunch one is suppressed.
     Queue::assertPushed(
         SendAnnouncement::class,
-        fn (SendAnnouncement $job) => $job->context === SignupContext::Maintenance,
+        fn (SendAnnouncement $job) => $job->context === HoldSignupContext::Maintenance,
     );
     Queue::assertNotPushed(
         SendAnnouncement::class,
-        fn (SendAnnouncement $job) => $job->context === SignupContext::Prelaunch,
+        fn (SendAnnouncement $job) => $job->context === HoldSignupContext::Prelaunch,
     );
 });
 

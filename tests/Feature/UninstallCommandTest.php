@@ -28,7 +28,7 @@ it('round-trips: setup then uninstall returns the app to a clean state', functio
     $this->artisan('jamesgifford:hold:uninstall', ['--force' => true])->assertSuccessful();
 
     expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()
-        ->and(File::exists($this->appRoot.'/app/Models/Hold/Signup.php'))->toBeFalse()
+        ->and(File::exists($this->appRoot.'/app/Models/HoldSignup.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/prelaunch.blade.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/maintenance.blade.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.blade.php'))->toBeFalse()
@@ -48,5 +48,5 @@ it('keeps the table and migration file with --keep-data', function () {
 
     // Non-data assets still removed.
     expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()
-        ->and(File::exists($this->appRoot.'/app/Models/Hold/Signup.php'))->toBeFalse();
+        ->and(File::exists($this->appRoot.'/app/Models/HoldSignup.php'))->toBeFalse();
 });

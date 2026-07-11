@@ -66,10 +66,10 @@ it('references real code identifiers so it cannot drift from the code', function
         'jamesgifford:hold:enable',
         'jamesgifford:hold:announce',
         'hold.signup',
-        'hold.unsubscribe',
         'hold.preview',
+        'jamesgifford:hold:unsubscribe',
         'down --render',
-        'App\\Models\\Hold\\Signup',
+        'App\\Models\\HoldSignup',
         'notifications.classes',
     ];
 

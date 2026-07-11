@@ -37,6 +37,6 @@ class LaunchAnnouncement extends Notification
             ->line('Thanks for your patience — the wait is over and we\'re now live.')
             ->action('Take a look', url('/'));
 
-        return $this->withUnsubscribe($this->applyFrom($mail), $this->signup);
+        return $this->applyFrom($mail);
     }
 }

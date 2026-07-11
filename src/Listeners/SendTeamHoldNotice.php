@@ -6,8 +6,8 @@ namespace JamesGifford\Hold\Listeners;
 
 use Illuminate\Foundation\Events\MaintenanceModeEnabled;
 use Illuminate\Support\Facades\Log;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
-use JamesGifford\Hold\SignupContext;
 use JamesGifford\Hold\Support\TeamNotifier;
 
 /**
@@ -31,6 +31,6 @@ final class SendTeamHoldNotice
             Log::info('Hold: prelaunch mode auto-disabled because maintenance mode was enabled (only one hold may be active at a time).');
         }
 
-        TeamNotifier::holdEnabled(SignupContext::Maintenance);
+        TeamNotifier::holdEnabled(HoldSignupContext::Maintenance);
     }
 }

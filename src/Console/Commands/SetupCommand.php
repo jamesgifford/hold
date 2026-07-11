@@ -11,7 +11,7 @@ use JamesGifford\Hold\Installer\PackageMigration;
 
 /**
  * Installs the package into the host app: publishes config, the migration
- * (timestamped), the Signup model, and the views; creates runtime storage; and
+ * (timestamped), the HoldSignup model, and the views; creates runtime storage; and
  * optionally migrates.
  *
  * Interactivity is gated. Run interactively it PAUSES right after publishing the
@@ -26,6 +26,12 @@ use JamesGifford\Hold\Installer\PackageMigration;
 final class SetupCommand extends Command
 {
     use ManagesHoldAssets;
+
+    /** @var list<string> Full host-app paths of files this run published. */
+    protected array $published = [];
+
+    /** @var list<string> Descriptions of files/steps this run skipped. */
+    protected array $skipped = [];
 
     protected $signature = 'jamesgifford:hold:setup
         {--force : Run unattended: skip the review pause and all overwrite prompts (never clobbering existing files), and permit running in production}
@@ -57,7 +63,7 @@ final class SetupCommand extends Command
         $this->step(2, 'Publishing the database migration');
         $this->publishMigration($migration);
 
-        $this->step(3, 'Publishing the Signup model');
+        $this->step(3, 'Publishing the HoldSignup model');
         $this->publishModel($interactive);
 
         $this->step(4, 'Publishing views');
@@ -66,6 +72,7 @@ final class SetupCommand extends Command
         $this->step(5, 'Creating runtime storage');
         $state->ensureDirectory();
         $this->line('  - storage/jamesgifford/hold/ ready (ignores its own contents)');
+        $this->published[] = $state->directory().DIRECTORY_SEPARATOR.'.gitignore';
 
         $this->step(6, 'Database migration');
         $this->maybeMigrate($interactive);
@@ -146,12 +153,14 @@ final class SetupCommand extends Command
         if ($migration->isPublished()) {
             $existing = array_map('basename', $migration->publishedFiles());
             $this->line('  - migration already published (skipped): '.implode(', ', $existing));
+            $this->skipped[] = 'database migration (already published: '.implode(', ', $existing).')';
 
             return;
         }
 
         $filename = $migration->publish();
         $this->line('  - published migration '.$filename);
+        $this->published[] = $this->laravel->databasePath('migrations').DIRECTORY_SEPARATOR.$filename;
     }
 
     protected function publishModel(bool $interactive): void
@@ -173,6 +182,7 @@ final class SetupCommand extends Command
 
         if (! $shouldMigrate) {
             $this->line('  - skipped — run `php artisan migrate` when you are ready');
+            $this->skipped[] = 'database migration run (run `php artisan migrate` when ready)';
 
             return;
         }
@@ -181,6 +191,7 @@ final class SetupCommand extends Command
 
         if ($code !== self::SUCCESS) {
             $this->warn('  - migration did not complete cleanly (see output above)');
+            $this->skipped[] = 'database migration run (did not complete cleanly — see output above)';
 
             return;
         }
@@ -197,12 +208,14 @@ final class SetupCommand extends Command
         if (is_file($target)) {
             if (! $interactive) {
                 $this->line("  - {$label} already present (left untouched)");
+                $this->skipped[] = "{$label} (already present, left untouched)";
 
                 return;
             }
 
             if (! $this->confirm("{$label} already exists. Overwrite it?", false)) {
                 $this->line("  - {$label} kept (not overwritten)");
+                $this->skipped[] = "{$label} (kept, not overwritten)";
 
                 return;
             }
@@ -215,6 +228,7 @@ final class SetupCommand extends Command
 
         file_put_contents($target, $contents);
         $this->line("  - published {$label}");
+        $this->published[] = $target;
     }
 
     protected function printSummary(): void
@@ -223,6 +237,25 @@ final class SetupCommand extends Command
 
         $this->newLine();
         $this->info('Setup complete.');
+
+        $this->newLine();
+        if ($this->published === []) {
+            $this->line('Published: nothing new (everything was already present).');
+        } else {
+            $this->line('Published these files:');
+            foreach ($this->published as $path) {
+                $this->line('  ✓ '.$path);
+            }
+        }
+
+        if ($this->skipped !== []) {
+            $this->newLine();
+            $this->line('Skipped:');
+            foreach ($this->skipped as $item) {
+                $this->line('  – '.$item);
+            }
+        }
+
         $this->newLine();
         $this->line('Next steps:');
         $this->line('  • Configure team addresses and mail settings in config/jamesgifford/hold.php');

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace JamesGifford\Hold\Tests;
 
 use JamesGifford\Hold\HoldServiceProvider;
-use JamesGifford\Hold\Models\Signup;
+use JamesGifford\Hold\Models\HoldSignup;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 abstract class TestCase extends OrchestraTestCase
@@ -32,10 +32,10 @@ abstract class TestCase extends OrchestraTestCase
             'prefix' => '',
         ]);
 
-        // Tests exercise the in-package Signup model directly; point the
+        // Tests exercise the in-package HoldSignup model directly; point the
         // package's model resolution at it (the published app model doesn't
         // exist in the test app).
-        $app['config']->set('jamesgifford.hold.models.signup', Signup::class);
+        $app['config']->set('jamesgifford.hold.models.signup', HoldSignup::class);
     }
 
     protected function defineDatabaseMigrations(): void

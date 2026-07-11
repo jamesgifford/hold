@@ -143,6 +143,11 @@ bypasses Hold's one-hold check — so Hold **self-heals**: if prelaunch is activ
 when maintenance comes up natively, Hold automatically disables prelaunch (logging
 an informational line) so only one hold is ever active.
 
+> ⚠️ **Deploy caveat:** a deploy script that wraps the deploy in `artisan down`/`up`
+> will therefore knock the app **out of prelaunch** via self-heal. During the
+> pre-launch phase, either skip `down`/`up` in your deploy script or re-enable
+> prelaunch (`jamesgifford:hold:enable prelaunch`) as the final deploy step.
+
 #### The maintenance template (shim pattern)
 
 Setup publishes the maintenance capture page as
@@ -177,9 +182,19 @@ an address is already on the list.
 - **Rate limiting**: `spam.rate_limit_per_minute` (default 5) per IP.
 - **Context**: recorded server-side — `maintenance` when the app is down, else
   `prelaunch` when a hold is active.
-- **Unsubscribe** is a soft state (`unsubscribed_at` is set; the row is never
-  deleted), so history survives resubscribes and the "already notified" guard
-  still holds.
+
+**One row per email, lifecycle-aware.** `requested_at` records when someone
+requested notification for the current hold:
+
+- **New email** → a row is created (`requested_at` = now).
+- **Same-cycle duplicate** (the row hasn't been notified yet) → **nothing is
+  written**; the row stays byte-identical.
+- **Re-signup during a later hold** (the row was already notified) → the row is
+  **re-armed**: `notified_at` cleared, `requested_at` reset, `context` set to the
+  current mode, `ip_address`/`user_agent` refreshed. `unsubscribed_at` is **never**
+  touched.
+
+Each requested hold produces **exactly one** notification (the `notified_at` guard).
 
 The signup route is **CSRF-exempt** by design: both holding pages render before
 Laravel starts the session (prelaunch is global middleware; the 503 view renders
@@ -198,9 +213,10 @@ Four notifications ship with the package, all sent via on-demand mail routes (no
 | `TeamHoldEnabled` | your team addresses | a hold begins |
 | `LaunchAnnouncement` | prelaunch signups | you announce a launch |
 | `ServiceRestored` | maintenance signups | you announce a restore |
-| `SignupReceipt` | a new signup (optional) | on capture, if enabled |
+| `HoldSignupReceipt` | a new/re-armed signup (optional) | on capture, if enabled |
 
-Every public email carries a signed one-click unsubscribe link.
+Unsubscribed rows (`unsubscribed_at` set) receive **none** of these — including
+the receipt (see [Unsubscribe](#unsubscribe-an-app-owned-data-contract)).
 
 ```bash
 # Announce immediately (idempotent — notified signups are never emailed twice)
@@ -233,6 +249,30 @@ customize copy or channels — the package resolves the class name at send time:
 ],
 ```
 
+## Unsubscribe (an app-owned data contract)
+
+Unsubscribe is a **data contract, not a feature.** The package keeps the
+`unsubscribed_at` column and fully respects it — an unsubscribed row receives
+**no** package email (announcements *and* the signup receipt) — but ships **no
+user-facing way to set it**: no route, no controller, no link in any email. Your
+app decides whether and how to expose opt-out (e.g. a future global
+communications preference).
+
+The package provides the means and nothing more:
+
+- **Model methods** on the published `App\Models\HoldSignup`: `->unsubscribe()`
+  and `->resubscribe()` (set / clear `unsubscribed_at`).
+- **Operator command** (server-side only, no public exposure):
+
+  ```bash
+  php artisan jamesgifford:hold:unsubscribe user@example.com
+  php artisan jamesgifford:hold:unsubscribe user@example.com --resubscribe
+  ```
+
+The package **never** sets or clears `unsubscribed_at` on its own — not even on
+re-arm. An unsubscribed address whose row is re-armed by a later signup succeeds
+silently but is emailed nothing until the app resubscribes it.
+
 ## Configuration
 
 Published to `config/jamesgifford/hold.php`. Key options:
@@ -252,8 +292,8 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `mail.from.address` / `mail.from.name` | `null` | From override (falls back to app defaults). |
 | `spam.rate_limit_per_minute` | `5` | Per-IP signup rate limit. |
 | `spam.honeypot_field` | `website` | Hidden honeypot field name. |
-| `models.signup` | `App\Models\Hold\Signup` | Resolved Signup model. |
-| `models.namespace` / `models.path` | `App\Models\Hold` / `app/Models/Hold` | Where setup publishes the model. |
+| `models.signup` | `App\Models\HoldSignup` | Resolved HoldSignup model. |
+| `models.namespace` / `models.path` | `App\Models` / `app/Models` | Where setup publishes the model (`HoldSignup.php`). |
 
 ### Owning your routes
 
@@ -296,7 +336,7 @@ The package binds a subclass of Laravel's
 `Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance` in the
 container. Wherever Laravel resolves that framework middleware, it gets the
 subclass, which merges the package's route URIs (built from `routes.prefix`) into
-the maintenance `except` list — so the signup/unsubscribe/preview routes stay
+the maintenance `except` list — so the signup/preview routes stay
 reachable during `down`.
 
 This is **just a container binding**: no core file is modified, and

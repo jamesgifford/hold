@@ -11,8 +11,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use JamesGifford\Hold\Announcements\AnnouncementResult;
 use JamesGifford\Hold\Announcements\Announcer;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
-use JamesGifford\Hold\SignupContext;
 
 /**
  * Sends a launch/restore announcement, off the queue when one is configured.
@@ -29,7 +29,7 @@ final class SendAnnouncement implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
 
-    public function __construct(public readonly SignupContext $context) {}
+    public function __construct(public readonly HoldSignupContext $context) {}
 
     public function handle(Announcer $announcer, HoldState $state): AnnouncementResult
     {
@@ -50,7 +50,7 @@ final class SendAnnouncement implements ShouldQueue
      */
     private function holdIsActiveAgain(HoldState $state): bool
     {
-        return $this->context === SignupContext::Maintenance
+        return $this->context === HoldSignupContext::Maintenance
             ? app()->isDownForMaintenance()
             : $state->isActive();
     }

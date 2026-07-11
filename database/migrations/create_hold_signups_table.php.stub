@@ -21,6 +21,10 @@ return new class extends Migration
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
 
+            // When the user requested notification for the CURRENT hold. Reset
+            // to now() each time the row is (re-)armed for a new hold.
+            $table->timestamp('requested_at');
+
             // Stamped when this address has been sent its announcement, so
             // re-running announce never double-sends.
             $table->timestamp('notified_at')->nullable();

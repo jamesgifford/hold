@@ -7,8 +7,8 @@ namespace JamesGifford\Hold\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
-use JamesGifford\Hold\SignupContext;
 
 /**
  * Internal heads-up to the team that a hold has begun. Sent to the configured
@@ -20,7 +20,7 @@ class TeamHoldEnabled extends Notification
     use FormatsHoldMail;
     use Queueable;
 
-    public function __construct(public readonly SignupContext $context) {}
+    public function __construct(public readonly HoldSignupContext $context) {}
 
     /**
      * @return array<int, string>
@@ -32,7 +32,7 @@ class TeamHoldEnabled extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mode = $this->context === SignupContext::Prelaunch
+        $mode = $this->context === HoldSignupContext::Prelaunch
             ? 'Prelaunch ("coming soon")'
             : 'Maintenance';
 

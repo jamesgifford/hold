@@ -6,21 +6,30 @@ namespace JamesGifford\Hold\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
-use JamesGifford\Hold\Models\Signup;
-use JamesGifford\Hold\SignupContext;
+use JamesGifford\Hold\Hold;
+use JamesGifford\Hold\HoldSignupContext;
+use JamesGifford\Hold\Models\HoldSignup;
 
 /**
- * @extends Factory<Signup>
+ * @extends Factory<HoldSignup>
  */
-class SignupFactory extends Factory
+class HoldSignupFactory extends Factory
 {
-    protected $model = Signup::class;
+    /**
+     * Build the configured HoldSignup model, so the published app model
+     * (App\Models\HoldSignup) and the package model both factory correctly.
+     */
+    public function modelName(): string
+    {
+        return Hold::signupModel();
+    }
 
     public function definition(): array
     {
         return [
             'email' => $this->faker->unique()->safeEmail(),
-            'context' => $this->faker->randomElement(SignupContext::cases()),
+            'context' => $this->faker->randomElement(HoldSignupContext::cases()),
+            'requested_at' => Carbon::now(),
             'ip_address' => $this->faker->ipv4(),
             'user_agent' => $this->faker->userAgent(),
             'notified_at' => null,
@@ -30,12 +39,12 @@ class SignupFactory extends Factory
 
     public function prelaunch(): static
     {
-        return $this->state(['context' => SignupContext::Prelaunch]);
+        return $this->state(['context' => HoldSignupContext::Prelaunch]);
     }
 
     public function maintenance(): static
     {
-        return $this->state(['context' => SignupContext::Maintenance]);
+        return $this->state(['context' => HoldSignupContext::Maintenance]);
     }
 
     public function notified(): static

@@ -8,6 +8,7 @@ use JamesGifford\Hold\Console\Commands\DisableCommand;
 use JamesGifford\Hold\Console\Commands\EnableCommand;
 use JamesGifford\Hold\Console\Commands\SetupCommand;
 use JamesGifford\Hold\Console\Commands\UninstallCommand;
+use JamesGifford\Hold\Console\Commands\UnsubscribeCommand;
 use JamesGifford\Hold\HoldServiceProvider;
 
 it('boots the service provider and merges package config', function () {
@@ -19,7 +20,7 @@ it('boots the service provider and merges package config', function () {
         ->and(config('jamesgifford.hold.prelaunch.status_code'))->toBe(200);
 });
 
-it('registers all five namespaced commands', function () {
+it('registers all six namespaced commands', function () {
     $commands = collect(app(Kernel::class)->all());
 
     expect($commands)->toHaveKeys([
@@ -28,11 +29,13 @@ it('registers all five namespaced commands', function () {
         'jamesgifford:hold:enable',
         'jamesgifford:hold:disable',
         'jamesgifford:hold:announce',
+        'jamesgifford:hold:unsubscribe',
     ]);
 
     expect($commands->get('jamesgifford:hold:setup'))->toBeInstanceOf(SetupCommand::class)
         ->and($commands->get('jamesgifford:hold:uninstall'))->toBeInstanceOf(UninstallCommand::class)
         ->and($commands->get('jamesgifford:hold:enable'))->toBeInstanceOf(EnableCommand::class)
         ->and($commands->get('jamesgifford:hold:disable'))->toBeInstanceOf(DisableCommand::class)
-        ->and($commands->get('jamesgifford:hold:announce'))->toBeInstanceOf(AnnounceCommand::class);
+        ->and($commands->get('jamesgifford:hold:announce'))->toBeInstanceOf(AnnounceCommand::class)
+        ->and($commands->get('jamesgifford:hold:unsubscribe'))->toBeInstanceOf(UnsubscribeCommand::class);
 });

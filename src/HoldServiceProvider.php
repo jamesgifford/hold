@@ -16,12 +16,13 @@ use JamesGifford\Hold\Console\Commands\DisableCommand;
 use JamesGifford\Hold\Console\Commands\EnableCommand;
 use JamesGifford\Hold\Console\Commands\SetupCommand;
 use JamesGifford\Hold\Console\Commands\UninstallCommand;
-use JamesGifford\Hold\Events\SignupCaptured;
+use JamesGifford\Hold\Console\Commands\UnsubscribeCommand;
+use JamesGifford\Hold\Events\HoldSignupCaptured;
 use JamesGifford\Hold\Http\BypassCookie;
 use JamesGifford\Hold\Http\Middleware\PrelaunchMode;
 use JamesGifford\Hold\Http\Middleware\PreventRequestsDuringMaintenance;
 use JamesGifford\Hold\Listeners\ScheduleRestoreAnnouncement;
-use JamesGifford\Hold\Listeners\SendSignupReceipt;
+use JamesGifford\Hold\Listeners\SendHoldSignupReceipt;
 use JamesGifford\Hold\Listeners\SendTeamHoldNotice;
 
 /**
@@ -73,6 +74,7 @@ class HoldServiceProvider extends ServiceProvider
                 EnableCommand::class,
                 DisableCommand::class,
                 AnnounceCommand::class,
+                UnsubscribeCommand::class,
             ]);
         }
     }
@@ -99,14 +101,14 @@ class HoldServiceProvider extends ServiceProvider
      * Maintenance (native `down`/`up`) is observed via the framework's own
      * events, so entering/leaving it triggers the team notice and (optionally)
      * the delayed restore announcement. The prelaunch equivalents are wired
-     * directly by the enable/disable commands. SignupCaptured drives the
+     * directly by the enable/disable commands. HoldSignupCaptured drives the
      * optional receipt.
      */
     protected function registerEventListeners(): void
     {
         Event::listen(MaintenanceModeEnabled::class, SendTeamHoldNotice::class);
         Event::listen(MaintenanceModeDisabled::class, ScheduleRestoreAnnouncement::class);
-        Event::listen(SignupCaptured::class, SendSignupReceipt::class);
+        Event::listen(HoldSignupCaptured::class, SendHoldSignupReceipt::class);
     }
 
     /**
@@ -130,7 +132,7 @@ class HoldServiceProvider extends ServiceProvider
     /**
      * Register the publishable asset groups.
      *
-     * Config, the Signup model, the views, and the self-hosted routes stub are
+     * Config, the HoldSignup model, the views, and the self-hosted routes stub are
      * publishable via `vendor:publish`. The migration is NOT a naive publish
      * group: its source is a `.stub` that must land with a fresh publish-time
      * Carbon timestamp, which `jamesgifford:hold:setup` owns.
@@ -142,13 +144,12 @@ class HoldServiceProvider extends ServiceProvider
         ], 'jamesgifford-hold-config');
 
         $this->publishes([
-            __DIR__.'/../src/Models/Signup.php' => app_path('Models/Hold/Signup.php'),
+            __DIR__.'/../src/Models/HoldSignup.php' => app_path('Models/HoldSignup.php'),
         ], 'jamesgifford-hold-models');
 
         $this->publishes([
             __DIR__.'/../resources/views/prelaunch.blade.php' => resource_path('views/vendor/hold/prelaunch.blade.php'),
             __DIR__.'/../resources/views/maintenance.blade.php' => resource_path('views/vendor/hold/maintenance.blade.php'),
-            __DIR__.'/../resources/views/unsubscribed.blade.php' => resource_path('views/vendor/hold/unsubscribed.blade.php'),
             __DIR__.'/../resources/views/errors/503.blade.php' => resource_path('views/errors/503.blade.php'),
         ], 'jamesgifford-hold-views');
 

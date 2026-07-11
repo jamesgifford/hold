@@ -44,12 +44,20 @@ final class UninstallCommand extends Command
 
         $this->newLine();
         $this->removeFile($this->configTarget(), 'config');
-        $this->removeFile($this->modelTarget(), 'Signup model');
-        $this->pruneEmptyDirectory($this->modelDirectory());
+        // modelDirectory() is now the shared app/Models — remove only our file.
+        $this->removeFile($this->modelTarget(), 'HoldSignup model');
 
         foreach ($this->viewMap() as $target) {
             $this->removeFile($target, $this->relative($target));
         }
+
+        // Clean up a wrongly-named errors/503.php from an earlier buggy install.
+        $legacy503 = $this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'errors'.DIRECTORY_SEPARATOR.'503.php');
+        if (is_file($legacy503)) {
+            @unlink($legacy503);
+            $this->line('  - removed legacy '.$this->relative($legacy503));
+        }
+
         $this->pruneEmptyDirectory($this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'hold'));
 
         $this->removeStorage($state);
@@ -68,7 +76,7 @@ final class UninstallCommand extends Command
     {
         $this->warn('This will remove:');
         $this->line('  • config/jamesgifford/hold.php');
-        $this->line('  • the published Signup model');
+        $this->line('  • the published HoldSignup model');
         $this->line('  • the published views (prelaunch, maintenance, unsubscribed, errors/503 shim)');
         $this->line('  • the storage/jamesgifford/hold/ directory');
 

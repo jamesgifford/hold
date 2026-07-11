@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Event;
-use JamesGifford\Hold\Events\SignupCaptured;
-use JamesGifford\Hold\Models\Signup;
-use JamesGifford\Hold\SignupContext;
+use JamesGifford\Hold\Events\HoldSignupCaptured;
+use JamesGifford\Hold\HoldSignupContext;
+use JamesGifford\Hold\Models\HoldSignup;
 
 it('captures a signup with email, context, ip, and user agent', function () {
     $response = $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])
@@ -17,11 +17,12 @@ it('captures a signup with email, context, ip, and user agent', function () {
     $response->assertRedirect();
     expect($response->headers->get('location'))->toContain('hold=subscribed');
 
-    $signup = Signup::first();
+    $signup = HoldSignup::first();
     expect($signup->email)->toBe('person@example.com')
-        ->and($signup->context)->toBe(SignupContext::Prelaunch)
+        ->and($signup->context)->toBe(HoldSignupContext::Prelaunch)
         ->and($signup->ip_address)->toBe('203.0.113.9')
-        ->and($signup->user_agent)->toBe('PestBrowser/1.0');
+        ->and($signup->user_agent)->toBe('PestBrowser/1.0')
+        ->and($signup->requested_at)->not->toBeNull();
 });
 
 it('records the maintenance context when the app is down', function () {
@@ -35,7 +36,7 @@ it('records the maintenance context when the app is down', function () {
     }
 
     // Server-side detection wins over the posted hidden field.
-    expect(Signup::first()->context)->toBe(SignupContext::Maintenance);
+    expect(HoldSignup::first()->context)->toBe(HoldSignupContext::Maintenance);
 });
 
 it('treats a duplicate email as a silent success with a single row', function () {
@@ -46,7 +47,7 @@ it('treats a duplicate email as a silent success with a single row', function ()
     $second->assertRedirect();
     expect($second->headers->get('location'))->toContain('hold=subscribed');
 
-    expect(Signup::where('email', 'dupe@example.com')->count())->toBe(1);
+    expect(HoldSignup::where('email', 'dupe@example.com')->count())->toBe(1);
 });
 
 it('silently succeeds and stores nothing when the honeypot is filled', function () {
@@ -58,7 +59,7 @@ it('silently succeeds and stores nothing when the honeypot is filled', function 
 
     $response->assertRedirect();
     expect($response->headers->get('location'))->toContain('hold=subscribed');
-    expect(Signup::count())->toBe(0);
+    expect(HoldSignup::count())->toBe(0);
 });
 
 it('reports an invalid email via the query param without storing a row', function () {
@@ -66,7 +67,7 @@ it('reports an invalid email via the query param without storing a row', functio
 
     $response->assertRedirect();
     expect($response->headers->get('location'))->toContain('hold=invalid');
-    expect(Signup::count())->toBe(0);
+    expect(HoldSignup::count())->toBe(0);
 });
 
 it('enforces the per-IP rate limit from config', function () {
@@ -79,14 +80,14 @@ it('enforces the per-IP rate limit from config', function () {
     }
 
     // Only the first 3 within the window are stored; the rest silently no-op.
-    expect(Signup::count())->toBe(3);
+    expect(HoldSignup::count())->toBe(3);
 });
 
-it('fires SignupCaptured only for genuinely new rows', function () {
-    Event::fake([SignupCaptured::class]);
+it('fires HoldSignupCaptured only for genuinely new rows', function () {
+    Event::fake([HoldSignupCaptured::class]);
 
     $this->post('hold/signup', ['email' => 'new@example.com', 'context' => 'prelaunch']);
     $this->post('hold/signup', ['email' => 'new@example.com', 'context' => 'prelaunch']);
 
-    Event::assertDispatchedTimes(SignupCaptured::class, 1);
+    Event::assertDispatchedTimes(HoldSignupCaptured::class, 1);
 });

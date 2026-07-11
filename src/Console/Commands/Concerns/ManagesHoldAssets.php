@@ -30,24 +30,36 @@ trait ManagesHoldAssets
 
     protected function modelNamespace(): string
     {
-        return trim((string) config('jamesgifford.hold.models.namespace', 'App\\Models\\Hold'), '\\');
+        return trim((string) config('jamesgifford.hold.models.namespace', 'App\\Models'), '\\');
+    }
+
+    /**
+     * The published model's class name (basename of the configured FQCN, e.g.
+     * HoldSignup) — also the published filename.
+     */
+    protected function modelClassName(): string
+    {
+        $fqcn = trim((string) config('jamesgifford.hold.models.signup', 'App\\Models\\HoldSignup'), '\\');
+        $basename = class_basename($fqcn);
+
+        return $basename !== '' ? $basename : 'HoldSignup';
     }
 
     protected function modelDirectory(): string
     {
-        $relative = trim((string) config('jamesgifford.hold.models.path', 'app/Models/Hold'), '/');
+        $relative = trim((string) config('jamesgifford.hold.models.path', 'app/Models'), '/');
 
         return $this->laravel->basePath($relative);
     }
 
     protected function modelTarget(): string
     {
-        return $this->modelDirectory().DIRECTORY_SEPARATOR.'Signup.php';
+        return $this->modelDirectory().DIRECTORY_SEPARATOR.$this->modelClassName().'.php';
     }
 
     protected function modelSource(): string
     {
-        return $this->packageRoot().'/src/Models/Signup.php';
+        return $this->packageRoot().'/src/Models/HoldSignup.php';
     }
 
     /**
@@ -67,22 +79,29 @@ trait ManagesHoldAssets
         return [
             $root.'/prelaunch.blade.php' => $vendor.DIRECTORY_SEPARATOR.'prelaunch.blade.php',
             $root.'/maintenance.blade.php' => $vendor.DIRECTORY_SEPARATOR.'maintenance.blade.php',
-            $root.'/unsubscribed.blade.php' => $vendor.DIRECTORY_SEPARATOR.'unsubscribed.blade.php',
             $root.'/errors/503.blade.php' => $this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'errors'.DIRECTORY_SEPARATOR.'503.blade.php'),
         ];
     }
 
     /**
-     * The published Signup model, with its namespace rewritten to the configured
-     * app namespace so the app owns a self-contained, correct file.
+     * The published model, with its namespace rewritten to the configured app
+     * namespace and its class renamed to the configured basename (HoldSignup) so
+     * the app owns a self-contained, correct file at app/Models/HoldSignup.php.
      */
     protected function renderPublishedModel(): string
     {
         $contents = (string) file_get_contents($this->modelSource());
 
-        return preg_replace(
+        $contents = preg_replace(
             '/^namespace\s+JamesGifford\\\\Hold\\\\Models;/m',
             'namespace '.$this->modelNamespace().';',
+            $contents,
+            1,
+        ) ?? $contents;
+
+        return preg_replace(
+            '/^class\s+HoldSignup\s+extends\s+Model$/m',
+            'class '.$this->modelClassName().' extends Model',
             $contents,
             1,
         ) ?? $contents;

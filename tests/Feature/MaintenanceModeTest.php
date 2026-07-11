@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance as FrameworkMiddleware;
 use Illuminate\Support\Facades\Route;
 use JamesGifford\Hold\Http\Middleware\PreventRequestsDuringMaintenance;
-use JamesGifford\Hold\Models\Signup;
+use JamesGifford\Hold\Models\HoldSignup;
 
 beforeEach(function () {
     Route::middleware('web')->get('/', fn () => 'REAL APP HOMEPAGE');
@@ -27,7 +27,7 @@ it('503s a normal route but keeps the package signup route reachable while down'
         app()->maintenanceMode()->deactivate();
     }
 
-    expect(Signup::where('email', 'maint@example.com')->exists())->toBeTrue();
+    expect(HoldSignup::where('email', 'maint@example.com')->exists())->toBeTrue();
 });
 
 it('merges the configured route prefix into the excluded paths', function () {

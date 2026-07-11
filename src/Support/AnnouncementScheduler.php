@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace JamesGifford\Hold\Support;
 
 use Illuminate\Support\Carbon;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Jobs\SendAnnouncement;
-use JamesGifford\Hold\SignupContext;
 
 /**
  * Dispatches the delayed announcement when config `auto_announce_on_up` is on.
@@ -17,7 +17,7 @@ use JamesGifford\Hold\SignupContext;
  */
 final class AnnouncementScheduler
 {
-    public static function scheduleIfAuto(SignupContext $context): bool
+    public static function scheduleIfAuto(HoldSignupContext $context): bool
     {
         if (! config('jamesgifford.hold.notifications.auto_announce_on_up', false)) {
             return false;

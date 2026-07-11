@@ -6,8 +6,8 @@ namespace JamesGifford\Hold\Console\Commands;
 
 use Illuminate\Console\Command;
 use JamesGifford\Hold\Announcements\Announcer;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
-use JamesGifford\Hold\SignupContext;
 
 /**
  * Sends the launch/restore announcement to captured signups, immediately.
@@ -64,7 +64,7 @@ final class AnnounceCommand extends Command
     private function reportCounts(Announcer $announcer): int
     {
         $this->info('Signups awaiting an announcement (dry run — nothing sent):');
-        foreach (SignupContext::cases() as $context) {
+        foreach (HoldSignupContext::cases() as $context) {
             $this->line(sprintf('  %-12s %d', $context->value, $announcer->pending($context)));
         }
 
@@ -72,15 +72,15 @@ final class AnnounceCommand extends Command
     }
 
     /**
-     * @return SignupContext|null|false context to send, null for nothing-to-do,
-     *                                  false for an error already reported.
+     * @return HoldSignupContext|null|false context to send, null for nothing-to-do,
+     *                                      false for an error already reported.
      */
-    private function resolveContext(Announcer $announcer): SignupContext|null|false
+    private function resolveContext(Announcer $announcer): HoldSignupContext|null|false
     {
         $option = $this->option('context');
 
         if ($option !== null) {
-            $context = SignupContext::tryFrom((string) $option);
+            $context = HoldSignupContext::tryFrom((string) $option);
 
             if ($context === null) {
                 $this->error("Invalid --context '{$option}'. Use 'prelaunch' or 'maintenance'.");
@@ -94,8 +94,8 @@ final class AnnounceCommand extends Command
         // Infer: use the sole context with pending signups, else disambiguate.
         $pending = array_filter(
             array_combine(
-                array_map(fn (SignupContext $c) => $c->value, SignupContext::cases()),
-                array_map(fn (SignupContext $c) => $announcer->pending($c), SignupContext::cases()),
+                array_map(fn (HoldSignupContext $c) => $c->value, HoldSignupContext::cases()),
+                array_map(fn (HoldSignupContext $c) => $announcer->pending($c), HoldSignupContext::cases()),
             ),
         );
 
@@ -109,12 +109,12 @@ final class AnnounceCommand extends Command
             return false;
         }
 
-        return SignupContext::from((string) array_key_first($pending));
+        return HoldSignupContext::from((string) array_key_first($pending));
     }
 
-    private function holdActive(SignupContext $context, HoldState $state): bool
+    private function holdActive(HoldSignupContext $context, HoldState $state): bool
     {
-        return $context === SignupContext::Maintenance
+        return $context === HoldSignupContext::Maintenance
             ? $this->laravel->isDownForMaintenance()
             : $state->isActive();
     }

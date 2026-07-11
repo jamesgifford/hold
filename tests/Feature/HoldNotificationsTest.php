@@ -8,12 +8,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use JamesGifford\Hold\Announcements\Announcer;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
 use JamesGifford\Hold\Jobs\SendAnnouncement;
-use JamesGifford\Hold\Models\Signup;
-use JamesGifford\Hold\Notifications\SignupReceipt;
+use JamesGifford\Hold\Models\HoldSignup;
+use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
-use JamesGifford\Hold\SignupContext;
 
 afterEach(function () {
     app(HoldState::class)->disable();
@@ -59,7 +59,7 @@ it('dispatches a delayed restore announcement on up only when auto-announce is o
     event(new MaintenanceModeDisabled);
 
     Queue::assertPushed(SendAnnouncement::class, function (SendAnnouncement $job) {
-        return $job->context === SignupContext::Maintenance
+        return $job->context === HoldSignupContext::Maintenance
             && $job->delay instanceof Carbon
             && $job->delay->equalTo(Carbon::parse('2026-07-08 12:10:00'));
     });
@@ -87,7 +87,7 @@ it('schedules the prelaunch announcement on disable when auto-announce is on', f
 
     Queue::assertPushed(
         SendAnnouncement::class,
-        fn (SendAnnouncement $job) => $job->context === SignupContext::Prelaunch,
+        fn (SendAnnouncement $job) => $job->context === HoldSignupContext::Prelaunch,
     );
 });
 
@@ -95,12 +95,12 @@ it('schedules the prelaunch announcement on disable when auto-announce is on', f
 
 it('aborts the delayed job silently when the hold is active again', function () {
     Notification::fake();
-    Signup::factory()->maintenance()->count(2)->create();
+    HoldSignup::factory()->maintenance()->count(2)->create();
 
     app()->maintenanceMode()->activate(['status' => 503]);
 
     try {
-        $result = (new SendAnnouncement(SignupContext::Maintenance))
+        $result = (new SendAnnouncement(HoldSignupContext::Maintenance))
             ->handle(app(Announcer::class), app(HoldState::class));
     } finally {
         app()->maintenanceMode()->deactivate();
@@ -112,9 +112,9 @@ it('aborts the delayed job silently when the hold is active again', function () 
 
 it('runs the delayed job when the hold is no longer active', function () {
     Notification::fake();
-    Signup::factory()->maintenance()->count(2)->create();
+    HoldSignup::factory()->maintenance()->count(2)->create();
 
-    $result = (new SendAnnouncement(SignupContext::Maintenance))
+    $result = (new SendAnnouncement(HoldSignupContext::Maintenance))
         ->handle(app(Announcer::class), app(HoldState::class));
 
     expect($result->skipped)->toBeFalse()
@@ -129,7 +129,7 @@ it('sends a receipt on capture when the receipt option is enabled', function () 
 
     $this->post('hold/signup', ['email' => 'receipt@example.com', 'context' => 'prelaunch']);
 
-    Notification::assertSentOnDemand(SignupReceipt::class);
+    Notification::assertSentOnDemand(HoldSignupReceipt::class);
 });
 
 it('sends no receipt on capture by default', function () {

@@ -1,6 +1,6 @@
 ---
 name: jamesgifford-hold
-description: Use when working on "coming soon" (pre-launch) or maintenance holding pages, email signup capture, or launch/restore announcements in an application that uses the jamesgifford/hold package. Covers prelaunch mode, native maintenance mode, the signup/unsubscribe/preview routes, the published App\Models\Hold\Signup model, notification overrides, and the jamesgifford:hold:* Artisan commands.
+description: Use when working on "coming soon" (pre-launch) or maintenance holding pages, email signup capture, or launch/restore announcements in an application that uses the jamesgifford/hold package. Covers prelaunch mode, native maintenance mode, the signup/preview routes, the published App\Models\HoldSignup model, the unsubscribe data contract, notification overrides, and the jamesgifford:hold:* Artisan commands.
 ---
 
 # JamesGifford Hold
@@ -51,15 +51,23 @@ Both holding pages POST to the `hold.signup` route. Behavior to rely on:
   CSRF token to these forms.
 - Context (`prelaunch` vs `maintenance`) is detected server-side; don't trust a
   posted context field.
-- Unsubscribe is a soft state via the signed `hold.unsubscribe` route
-  (`Signup::unsubscribe()` sets `unsubscribed_at`); rows are never deleted.
+- One row per email. A same-cycle duplicate (row not yet notified) writes NOTHING
+  (byte-identical). A re-signup during a LATER hold (row already notified) re-arms
+  the row: `notified_at` back to null, `requested_at` to now, current context, ip/ua
+  refreshed — `unsubscribed_at` is NEVER touched. Exactly one notification per hold.
 - `hold.preview` is a signed route that sets the bypass cookie so you can view
   the real app behind the prelaunch page.
+
+**Unsubscribe is an app-owned data contract.** The package keeps `unsubscribed_at`
+and excludes those rows from every email (announce + receipt), but ships NO
+user-facing unsubscribe (no route, no link). Set/clear it via `Signup::unsubscribe()`
+/ `Signup::resubscribe()`, or the operator command `jamesgifford:hold:unsubscribe
+{email} {--resubscribe}`. The package never sets or clears it on its own.
 
 ## Commands
 
 - `jamesgifford:hold:setup` — install: publish config, the timestamped migration,
-  the `App\Models\Hold\Signup` model, and the views; create runtime storage.
+  the `App\Models\HoldSignup` model, and the views; create runtime storage.
   Interactive run pauses to let you edit config, then honors it. Flags: `--force`
   (unattended), `--migrate`.
 - `jamesgifford:hold:enable {mode}` — activate a hold: `prelaunch` (prints a signed
@@ -88,7 +96,7 @@ Published to `config/jamesgifford/hold.php`:
 
 ## Customizing
 
-- **Model**: `setup` publishes `App\Models\Hold\Signup` (resolved via
+- **Model**: `setup` publishes `App\Models\HoldSignup` (resolved via
   `config('jamesgifford.hold.models.signup')`). Edit the published file — do NOT
   edit the package base model in `vendor/`. Point the config at a subclass to swap it.
 - **Views**: reskin by editing the four `--hold-*` CSS custom properties at the
@@ -102,10 +110,11 @@ Published to `config/jamesgifford/hold.php`:
 
 - Do NOT run `php artisan down --render` — it bypasses the HTTP kernel, so the
   signup POST route stops working. Use a plain `php artisan down`.
-- Do NOT edit the package base model in `vendor/` — edit the published `App\Models\Hold\Signup`.
+- Do NOT edit the package base model in `vendor/` — edit the published `App\Models\HoldSignup`.
 - Do NOT add `@csrf` or rely on session flash on the holding pages — the signup
   route is CSRF-exempt and feedback is the `?hold=` query param.
 - Do NOT toggle prelaunch mode by writing the flag file — use `jamesgifford:hold:enable prelaunch` / `disable`.
 - Do NOT try to run both holds at once — `enable` refuses while one is active; running native `down` while prelaunch is up auto-disables prelaunch.
-- Do NOT delete signup rows to unsubscribe — unsubscribe is a soft state (`unsubscribed_at`).
+- Do NOT delete signup rows to unsubscribe — it's a soft state; use `Signup::unsubscribe()`/`resubscribe()` or `jamesgifford:hold:unsubscribe`.
+- Do NOT build a user-facing unsubscribe from the package — it ships none; the app owns that decision. The package never sets/clears `unsubscribed_at` on its own.
 - Do NOT hardcode the route prefix — read `config('jamesgifford.hold.routes.prefix')`.

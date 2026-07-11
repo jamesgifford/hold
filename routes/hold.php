@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
+use JamesGifford\Hold\Http\Controllers\HoldSignupController;
 use JamesGifford\Hold\Http\Controllers\PreviewController;
-use JamesGifford\Hold\Http\Controllers\SignupController;
-use JamesGifford\Hold\Http\Controllers\UnsubscribeController;
 
 /*
  * Package routes. The service provider loads this file inside a group that
@@ -19,13 +18,9 @@ use JamesGifford\Hold\Http\Controllers\UnsubscribeController;
  * The honeypot field and per-IP rate limit guard the endpoint instead.
  */
 
-Route::post('signup', [SignupController::class, 'store'])
+Route::post('signup', [HoldSignupController::class, 'store'])
     ->name('hold.signup')
     ->withoutMiddleware([PreventRequestForgery::class]);
-
-Route::get('unsubscribe/{signup}', UnsubscribeController::class)
-    ->name('hold.unsubscribe')
-    ->middleware('signed');
 
 Route::get('preview', PreviewController::class)
     ->name('hold.preview')

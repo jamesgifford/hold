@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use JamesGifford\Hold\Hold;
-use JamesGifford\Hold\SignupContext;
+use JamesGifford\Hold\HoldSignupContext;
 use Throwable;
 
 /**
@@ -25,14 +25,14 @@ final class Announcer
      * Config key of the notification each context announces with.
      */
     private const NOTIFICATION_KEY = [
-        SignupContext::Prelaunch->value => 'launch_announcement',
-        SignupContext::Maintenance->value => 'service_restored',
+        HoldSignupContext::Prelaunch->value => 'launch_announcement',
+        HoldSignupContext::Maintenance->value => 'service_restored',
     ];
 
     /**
      * Count the signups that a run for this context would email.
      */
-    public function pending(SignupContext $context): int
+    public function pending(HoldSignupContext $context): int
     {
         return $this->targets($context)->count();
     }
@@ -41,7 +41,7 @@ final class Announcer
      * Send the announcement for a context, stamping each recipient. Returns the
      * per-recipient tallies.
      */
-    public function send(SignupContext $context): AnnouncementResult
+    public function send(HoldSignupContext $context): AnnouncementResult
     {
         $class = Hold::notificationClass(self::NOTIFICATION_KEY[$context->value]);
         $sent = 0;
@@ -76,7 +76,7 @@ final class Announcer
     /**
      * Subscribed, not-yet-notified signups for the given context.
      */
-    private function targets(SignupContext $context)
+    private function targets(HoldSignupContext $context)
     {
         return Hold::signups()
             ->subscribed()

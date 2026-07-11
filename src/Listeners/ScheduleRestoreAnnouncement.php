@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace JamesGifford\Hold\Listeners;
 
 use Illuminate\Foundation\Events\MaintenanceModeDisabled;
-use JamesGifford\Hold\SignupContext;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Support\AnnouncementScheduler;
 
 /**
@@ -17,6 +17,6 @@ final class ScheduleRestoreAnnouncement
 {
     public function handle(MaintenanceModeDisabled $event): void
     {
-        AnnouncementScheduler::scheduleIfAuto(SignupContext::Maintenance);
+        AnnouncementScheduler::scheduleIfAuto(HoldSignupContext::Maintenance);
     }
 }

@@ -10,7 +10,7 @@ namespace JamesGifford\Hold;
  * Determines which announcement an address later receives: a prelaunch signup
  * gets the "we've launched" message; a maintenance signup gets "we're back".
  */
-enum SignupContext: string
+enum HoldSignupContext: string
 {
     case Prelaunch = 'prelaunch';
     case Maintenance = 'maintenance';

@@ -37,6 +37,6 @@ class ServiceRestored extends Notification
             ->line('Maintenance is complete and everything is up and running again.')
             ->action('Return to the site', url('/'));
 
-        return $this->withUnsubscribe($this->applyFrom($mail), $this->signup);
+        return $this->applyFrom($mail);
     }
 }

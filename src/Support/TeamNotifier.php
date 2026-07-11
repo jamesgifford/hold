@@ -6,7 +6,7 @@ namespace JamesGifford\Hold\Support;
 
 use Illuminate\Support\Facades\Notification;
 use JamesGifford\Hold\Hold;
-use JamesGifford\Hold\SignupContext;
+use JamesGifford\Hold\HoldSignupContext;
 
 /**
  * Sends the "hold enabled" team notice, shared by the prelaunch enable command
@@ -15,7 +15,7 @@ use JamesGifford\Hold\SignupContext;
  */
 final class TeamNotifier
 {
-    public static function holdEnabled(SignupContext $context): bool
+    public static function holdEnabled(HoldSignupContext $context): bool
     {
         $addresses = Hold::teamAddresses();
 

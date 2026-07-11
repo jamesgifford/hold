@@ -6,8 +6,8 @@ namespace JamesGifford\Hold\Console\Commands;
 
 use Illuminate\Console\Command;
 use JamesGifford\Hold\Console\Commands\Concerns\InteractsWithHoldModes;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
-use JamesGifford\Hold\SignupContext;
 use JamesGifford\Hold\Support\AnnouncementScheduler;
 
 /**
@@ -87,7 +87,7 @@ final class DisableCommand extends Command
             return;
         }
 
-        if (AnnouncementScheduler::scheduleIfAuto(SignupContext::Prelaunch)) {
+        if (AnnouncementScheduler::scheduleIfAuto(HoldSignupContext::Prelaunch)) {
             $this->line(sprintf(
                 'Launch announcement scheduled to prelaunch signups in %d minute(s). Re-enabling within that window cancels it.',
                 AnnouncementScheduler::delayMinutes(),

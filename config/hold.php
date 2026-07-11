@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
 use JamesGifford\Hold\Notifications\ServiceRestored;
-use JamesGifford\Hold\Notifications\SignupReceipt;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
 
 return [
@@ -100,7 +100,7 @@ return [
             'team_hold_enabled' => TeamHoldEnabled::class,
             'launch_announcement' => LaunchAnnouncement::class,
             'service_restored' => ServiceRestored::class,
-            'signup_receipt' => SignupReceipt::class,
+            'signup_receipt' => HoldSignupReceipt::class,
         ],
     ],
 
@@ -146,7 +146,7 @@ return [
     | Models
     |--------------------------------------------------------------------------
     |
-    | The Signup model is PUBLISHED into the host app (the app owns it). These
+    | The HoldSignup model is PUBLISHED into the host app (the app owns it). These
     | values tell the package where it lives and which class to resolve, so the
     | setup command can publish it to the right place and the runtime can find
     | it. Point `class` at your own subclass to customize behavior.
@@ -156,13 +156,14 @@ return [
     'models' => [
 
         // FQCN the package resolves for signup records. Defaults to the
-        // published location below.
-        'signup' => 'App\\Models\\Hold\\Signup',
+        // published location below. The class basename (HoldSignup) is also the
+        // published filename.
+        'signup' => 'App\\Models\\HoldSignup',
 
-        // Where `jamesgifford:hold:setup` publishes the Signup model. `namespace`
-        // and `path` must correspond (PSR-4). `path` is relative to the app base.
-        'namespace' => 'App\\Models\\Hold',
-        'path' => 'app/Models/Hold',
+        // Where `jamesgifford:hold:setup` publishes the model. `namespace` and
+        // `path` must correspond (PSR-4). `path` is relative to the app base.
+        'namespace' => 'App\\Models',
+        'path' => 'app/Models',
     ],
 
 ];

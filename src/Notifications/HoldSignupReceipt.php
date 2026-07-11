@@ -15,7 +15,7 @@ use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
  * notifications.send_signup_receipt is true. Override via
  * config notifications.classes.signup_receipt.
  */
-class SignupReceipt extends Notification
+class HoldSignupReceipt extends Notification
 {
     use FormatsHoldMail;
     use Queueable;
@@ -36,6 +36,6 @@ class SignupReceipt extends Notification
             ->subject('You\'re on the list')
             ->line('Thanks — we\'ve added you to the list and will email you once when there\'s news.');
 
-        return $this->withUnsubscribe($this->applyFrom($mail), $this->signup);
+        return $this->applyFrom($mail);
     }
 }

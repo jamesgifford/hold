@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use JamesGifford\Hold\Console\Commands\Concerns\InteractsWithHoldModes;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
-use JamesGifford\Hold\SignupContext;
 use JamesGifford\Hold\Support\TeamNotifier;
 
 /**
@@ -69,7 +69,7 @@ final class EnableCommand extends Command
         $this->info('Prelaunch ("coming soon") mode enabled. Visitors now see the holding page.');
 
         // Prelaunch has no framework event, so the team notice is sent here.
-        if (TeamNotifier::holdEnabled(SignupContext::Prelaunch)) {
+        if (TeamNotifier::holdEnabled(HoldSignupContext::Prelaunch)) {
             $this->line('Sent the "hold enabled" notice to your team addresses.');
         }
 
