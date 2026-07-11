@@ -8,37 +8,48 @@ afterEach(function () {
     app(HoldState::class)->disable();
 });
 
-it('enables prelaunch mode and prints a signed preview link', function () {
+it('enables prelaunch mode, prints a signed preview link, and reports status', function () {
     expect(app(HoldState::class)->isActive())->toBeFalse();
 
-    $this->artisan('jamesgifford:hold:enable')
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'prelaunch'])
         ->assertSuccessful()
-        ->expectsOutputToContain('Prelaunch mode enabled')
-        ->expectsOutputToContain('/hold/preview');
+        ->expectsOutputToContain('Prelaunch')
+        ->expectsOutputToContain('/hold/preview')
+        ->expectsOutputToContain('Active hold: prelaunch');
 
     expect(app(HoldState::class)->isActive())->toBeTrue();
 });
 
-it('is idempotent when already enabled', function () {
-    app(HoldState::class)->enable();
-
-    $this->artisan('jamesgifford:hold:enable')
-        ->assertSuccessful()
-        ->expectsOutputToContain('already active');
+it('rejects an unknown mode', function () {
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'bogus'])
+        ->assertFailed()
+        ->expectsOutputToContain("Unknown mode 'bogus'");
 });
 
-it('disables prelaunch mode', function () {
+it('refuses to enable a second hold while prelaunch is already active', function () {
+    app(HoldState::class)->enable();
+
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'prelaunch'])
+        ->assertFailed()
+        ->expectsOutputToContain('already active: prelaunch');
+
+    // Still exactly the original hold.
+    expect(app(HoldState::class)->isActive())->toBeTrue();
+});
+
+it('disables prelaunch mode and reports status', function () {
     app(HoldState::class)->enable();
 
     $this->artisan('jamesgifford:hold:disable')
         ->assertSuccessful()
-        ->expectsOutputToContain('disabled');
+        ->expectsOutputToContain('Prelaunch mode disabled')
+        ->expectsOutputToContain('Active hold: none');
 
     expect(app(HoldState::class)->isActive())->toBeFalse();
 });
 
-it('is idempotent when already disabled', function () {
+it('reports cleanly when disable runs with no hold active', function () {
     $this->artisan('jamesgifford:hold:disable')
         ->assertSuccessful()
-        ->expectsOutputToContain('already inactive');
+        ->expectsOutputToContain('No hold is active');
 });

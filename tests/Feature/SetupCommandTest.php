@@ -29,8 +29,15 @@ it('publishes every asset and migrates on a clean app', function () {
     expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/app/Models/Hold/Signup.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/prelaunch.blade.php'))->toBeTrue()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/maintenance.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/storage/jamesgifford/hold/.gitignore'))->toBeTrue();
+
+    // The published 503 is the thin shim, and the real form lives in maintenance.blade.php.
+    expect(File::get($this->appRoot.'/resources/views/errors/503.blade.php'))
+        ->toContain("@include('hold::maintenance')");
+    expect(File::get($this->appRoot.'/resources/views/vendor/hold/maintenance.blade.php'))
+        ->toContain('value="maintenance"');
 
     // Exactly one timestamped migration was published.
     $migrations = File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php');

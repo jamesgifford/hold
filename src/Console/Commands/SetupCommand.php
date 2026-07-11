@@ -226,7 +226,7 @@ final class SetupCommand extends Command
         $this->newLine();
         $this->line('Next steps:');
         $this->line('  • Configure team addresses and mail settings in config/jamesgifford/hold.php');
-        $this->line('  • Start a "coming soon" hold:  php artisan jamesgifford:hold:enable');
+        $this->line('  • Start a hold:  php artisan jamesgifford:hold:enable prelaunch|maintenance');
         $this->line("  • Preview / signup routes live under /{$prefix}");
         $this->newLine();
         $this->warn('Maintenance mode: use plain `php artisan down` — never `down --render`, which');

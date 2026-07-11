@@ -14,9 +14,13 @@ email everyone — once — when you're ready:
    own routes and holders of a valid bypass cookie) and renders the prelaunch page
    with a configurable HTTP status.
 2. **Maintenance** — Laravel's native `php artisan down`, left completely
-   untouched. The package participates by shipping a `resources/views/errors/503.blade.php`
-   that carries a capture form, and by keeping its own routes reachable while the
-   app is down.
+   untouched. The package participates by shipping a maintenance capture page
+   (`resources/views/vendor/hold/maintenance.blade.php`, rendered on `down` via a
+   published `errors/503.blade.php` shim) and by keeping its own routes reachable
+   while the app is down.
+
+Hold is the unified interface for both — one command pair (`enable {mode}` /
+`disable`), with only one mode ever active at a time.
 
 The package provides mechanism; your app owns orchestration. The migration and
 the `Signup` model are **published into your app** — you own them. Integration is
@@ -70,30 +74,52 @@ clobbers an edited config (it prompts, or skips silently when unattended).
 ## Quick start
 
 ```bash
-# Take the app offline behind the "coming soon" page (prints a signed preview link)
-php artisan jamesgifford:hold:enable
+# Put up the "coming soon" page (prints a signed preview link)
+php artisan jamesgifford:hold:enable prelaunch
 
-# ...collect signups...
+# ...or take a live app down for maintenance (prints a secret bypass link)
+php artisan jamesgifford:hold:enable maintenance
 
-# Go live again (optionally auto-announces — see config)
+# Bring the app back — disables whichever hold is active
 php artisan jamesgifford:hold:disable
 
-# Email your prelaunch signups that you've launched
+# Email your signups that you're live / back
 php artisan jamesgifford:hold:announce
 ```
 
 ## The two modes
 
+Hold is the single interface for both holding modes, and **only one may be active
+at a time.** You drive both through two commands:
+
+```bash
+php artisan jamesgifford:hold:enable prelaunch     # "coming soon" page
+php artisan jamesgifford:hold:enable maintenance   # native `artisan down`, managed by Hold
+php artisan jamesgifford:hold:disable              # end whichever hold is active
+```
+
+`enable` **refuses** (and names the active mode) if a hold is already up — run
+`disable` first; there is no override. Every run ends with an `Active hold: …`
+status line so the resulting state is unambiguous.
+
+### Which mode do I want?
+
+| | **Prelaunch** | **Maintenance** |
+| --- | --- | --- |
+| Use when | Before you've launched — a "coming soon" teaser | Temporarily taking a live app down for work |
+| Mechanism | Package flag file + global middleware | Laravel's native `php artisan down` |
+| HTTP status | `200` (indexable) or `503`, configurable | `503` |
+| Your bypass | Signed preview link (per-activation token) | Laravel secret link (`/{secret}`) |
+| Signup context | `prelaunch` → launch announcement | `maintenance` → "we're back" announcement |
+
 ### Prelaunch ("coming soon")
 
-Prelaunch is toggled by a flag file under `storage/jamesgifford/hold/`, so it is
-independent of your app's config cache and of Laravel's maintenance mode.
-
-- `jamesgifford:hold:enable` activates it (guarded in production), notifies your
-  team if addresses are configured, and prints a **signed preview link** that sets
-  a bypass cookie so you can view the real app behind the page.
-- `jamesgifford:hold:disable` deactivates it. If `auto_announce_on_up` is on, it
-  schedules the launch announcement after the configured delay.
+`enable prelaunch` writes a flag file under `storage/jamesgifford/hold/` (so it is
+independent of config cache) and prints a **signed preview link**; `disable`
+clears it. The `PrelaunchMode` middleware is registered **globally** — when no
+hold is active it is a near-zero-cost no-op (a single `is_file()` check). The
+response status is configurable (`prelaunch.status_code`): `200` keeps the page
+indexable, `503` signals "not yet available" to crawlers and uptime checks.
 
 **Preview links and bypass cookies are valid per-activation.** Each enable mints
 a fresh random token (stored as the flag file's contents); the preview link and
@@ -103,33 +129,41 @@ outstanding preview link and bypass cookie** — re-enabling issues a new token,
 old links (even with a still-valid signature) and old cookies stop working. Share
 the link printed by the most recent `enable`.
 
-The `PrelaunchMode` middleware is registered **globally**. When no hold is active
-it is a near-zero-cost no-op (a single `is_file()` check), so the overhead on
-normal traffic is negligible. The response status is configurable
-(`prelaunch.status_code`): `200` keeps the page indexable, `503` signals
-"not yet available" to crawlers and uptime checks.
+### Maintenance
 
-### Maintenance (`php artisan down`)
+`enable maintenance` runs Laravel's native `php artisan down` for you (with a
+generated `--secret`) and prints the secret bypass link (`/{secret}`); `disable`
+runs `php artisan up`. Laravel's maintenance mode is the **untouched underlying
+mechanism** — Hold just manages it, keeps its own routes reachable so the capture
+form works, and records signups with the `maintenance` context. When
+`auto_announce_on_up` is enabled, `up` schedules the "we're back" announcement.
 
-Use Laravel's native maintenance mode as usual:
+**Native `down`/`up` still work directly** (deploy tooling often calls them), which
+bypasses Hold's one-hold check — so Hold **self-heals**: if prelaunch is active
+when maintenance comes up natively, Hold automatically disables prelaunch (logging
+an informational line) so only one hold is ever active.
 
-```bash
-php artisan down
-# ...work...
-php artisan up
+#### The maintenance template (shim pattern)
+
+Setup publishes the maintenance capture page as
+`resources/views/vendor/hold/maintenance.blade.php` — **edit it there.** It also
+publishes `resources/views/errors/503.blade.php` as a two-line **shim** that
+Laravel renders on `down`; the shim just `@include`s the maintenance view:
+
+```blade
+{{-- Hold package: Laravel renders this on `artisan down`; edit maintenance.blade.php instead. --}}
+@include('hold::maintenance')
 ```
 
-The package keeps its own routes reachable during maintenance (so the 503 page's
-signup form works), captures signups with the `maintenance` context, and — when
-`auto_announce_on_up` is enabled — schedules the "we're back" announcement when
-you run `php artisan up`.
+(Prelaunch's page is the sibling `resources/views/vendor/hold/prelaunch.blade.php`.)
 
 #### ⚠️ Never use `php artisan down --render`
 
 `--render` renders the maintenance view by **bypassing the HTTP kernel**. The
 signup form POSTs to a normal route, and with `--render` that route never runs —
-**the form silently fails**. Always use a plain `php artisan down`; the package's
-published `errors/503.blade.php` and its route bypass handle the rest.
+**the form silently fails**. Always use a plain `php artisan down` (or
+`jamesgifford:hold:enable maintenance`); the published `errors/503.blade.php` shim
+and the route bypass handle the rest.
 
 ## Signup capture
 
@@ -238,9 +272,9 @@ URIs are "package routes".
 
 ## Customizing the views
 
-The prelaunch and 503 views are self-contained single Blade files with inline CSS
-and **no build step** — they render even when your app is half-broken. Each
-declares four CSS custom properties at the top for a three-line reskin:
+The prelaunch and maintenance views are self-contained single Blade files with
+inline CSS and **no build step** — they render even when your app is half-broken.
+Each declares four CSS custom properties at the top for a three-line reskin:
 
 ```css
 :root {
@@ -252,7 +286,9 @@ declares four CSS custom properties at the top for a three-line reskin:
 ```
 
 Setup publishes them to `resources/views/vendor/hold/prelaunch.blade.php` and
-`resources/views/errors/503.blade.php`; edit them freely.
+`resources/views/vendor/hold/maintenance.blade.php`; edit them freely. The
+`resources/views/errors/503.blade.php` shim just includes the maintenance view,
+so you rarely touch it.
 
 ## How maintenance integration works (container binding)
 
@@ -296,8 +332,8 @@ round-trips to a clean state.
 | --- | --- |
 | `jamesgifford:hold:setup` | Publish config, migration, model, views; optionally migrate. |
 | `jamesgifford:hold:uninstall` | Remove everything published and drop the table (`--keep-data` to keep it). |
-| `jamesgifford:hold:enable` | Activate prelaunch mode; print a signed preview link. |
-| `jamesgifford:hold:disable` | Deactivate prelaunch mode; optionally auto-announce. |
+| `jamesgifford:hold:enable {mode}` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). |
+| `jamesgifford:hold:disable` | Deactivate whichever hold is active; optionally auto-announce. |
 | `jamesgifford:hold:announce` | Email the launch/restore announcement (`--context`, `--dry-run`). |
 
 ## Testing

@@ -147,6 +147,7 @@ class HoldServiceProvider extends ServiceProvider
 
         $this->publishes([
             __DIR__.'/../resources/views/prelaunch.blade.php' => resource_path('views/vendor/hold/prelaunch.blade.php'),
+            __DIR__.'/../resources/views/maintenance.blade.php' => resource_path('views/vendor/hold/maintenance.blade.php'),
             __DIR__.'/../resources/views/unsubscribed.blade.php' => resource_path('views/vendor/hold/unsubscribed.blade.php'),
             __DIR__.'/../resources/views/errors/503.blade.php' => resource_path('views/errors/503.blade.php'),
         ], 'jamesgifford-hold-views');

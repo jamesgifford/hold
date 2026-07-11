@@ -43,7 +43,7 @@ it('notifies the team when the prelaunch enable command runs', function () {
     Notification::fake();
     config()->set('jamesgifford.hold.notifications.team_addresses', ['team@example.com']);
 
-    $this->artisan('jamesgifford:hold:enable')->assertSuccessful();
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'prelaunch'])->assertSuccessful();
 
     Notification::assertSentOnDemand(TeamHoldEnabled::class);
 });

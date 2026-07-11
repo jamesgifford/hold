@@ -14,19 +14,28 @@ The package provides the mechanism; your app owns orchestration.
 
 ## The two modes
 
+Hold is the unified interface for both modes, and **only one may be active at a
+time**. Drive both with `jamesgifford:hold:enable {prelaunch|maintenance}` and
+`jamesgifford:hold:disable` (see Commands). `enable` refuses if a hold is already
+active; run `disable` first.
+
 **Prelaunch ("coming soon")** — package-owned, toggled by a flag file under
 `storage/jamesgifford/hold/` (not Laravel's maintenance mode). A GLOBAL
 `PrelaunchMode` middleware renders the holding page for every request while
 active, except the package's own routes and holders of a valid bypass cookie.
-Toggle it with the commands below, never by writing the flag file yourself. The
+Toggle it with the commands, never by writing the flag file yourself. The
 response status is `config('jamesgifford.hold.prelaunch.status_code')` (200 to
 stay indexable, or 503).
 
 **Maintenance** — Laravel's native `php artisan down`, untouched. The package
 keeps its own routes reachable while down (a container-bound subclass of
 `PreventRequestsDuringMaintenance` merges the package route URIs into the
-maintenance `except` list) and ships `resources/views/errors/503.blade.php` with
-the capture form. Use a plain `php artisan down` / `php artisan up`.
+maintenance `except` list). The maintenance capture page is
+`resources/views/vendor/hold/maintenance.blade.php`; `resources/views/errors/503.blade.php`
+is a thin shim that `@include`s it. You can run `enable maintenance` (it invokes
+`down` with a bypass secret) or a plain `php artisan down` / `php artisan up`
+directly — if you run `down` natively while prelaunch is active, Hold self-heals
+by auto-disabling prelaunch (one hold at a time).
 
 ## Signup capture
 
@@ -53,10 +62,11 @@ Both holding pages POST to the `hold.signup` route. Behavior to rely on:
   the `App\Models\Hold\Signup` model, and the views; create runtime storage.
   Interactive run pauses to let you edit config, then honors it. Flags: `--force`
   (unattended), `--migrate`.
-- `jamesgifford:hold:enable` — activate prelaunch mode; prints a signed preview
-  link. Guarded in production (`--force`).
-- `jamesgifford:hold:disable` — deactivate prelaunch mode; may auto-schedule the
-  launch announcement (see config).
+- `jamesgifford:hold:enable {mode}` — activate a hold: `prelaunch` (prints a signed
+  preview link) or `maintenance` (invokes `down` with a bypass secret and prints
+  the secret link). Refuses if a hold is already active — no override; disable first.
+- `jamesgifford:hold:disable` — deactivate whichever hold is active (prelaunch and/or
+  maintenance); may auto-schedule the launch/restore announcement (see config).
 - `jamesgifford:hold:announce` — email the launch/restore announcement now.
   Idempotent (stamps `notified_at`, never double-sends). Flags: `--context=prelaunch|maintenance`
   (inferred when one context has pending signups), `--dry-run` (report counts,
@@ -82,7 +92,8 @@ Published to `config/jamesgifford/hold.php`:
   `config('jamesgifford.hold.models.signup')`). Edit the published file — do NOT
   edit the package base model in `vendor/`. Point the config at a subclass to swap it.
 - **Views**: reskin by editing the four `--hold-*` CSS custom properties at the
-  top of the published `prelaunch.blade.php` / `errors/503.blade.php`.
+  top of the published `vendor/hold/prelaunch.blade.php` / `vendor/hold/maintenance.blade.php`
+  (the `errors/503.blade.php` shim just includes the maintenance view).
 - **Notifications**: override any email by pointing a `notifications.classes`
   entry at your own Notification subclass — the package resolves the class at
   send time.
@@ -94,6 +105,7 @@ Published to `config/jamesgifford/hold.php`:
 - Do NOT edit the package base model in `vendor/` — edit the published `App\Models\Hold\Signup`.
 - Do NOT add `@csrf` or rely on session flash on the holding pages — the signup
   route is CSRF-exempt and feedback is the `?hold=` query param.
-- Do NOT toggle prelaunch mode by writing the flag file — use `jamesgifford:hold:enable` / `:disable`.
+- Do NOT toggle prelaunch mode by writing the flag file — use `jamesgifford:hold:enable prelaunch` / `disable`.
+- Do NOT try to run both holds at once — `enable` refuses while one is active; running native `down` while prelaunch is up auto-disables prelaunch.
 - Do NOT delete signup rows to unsubscribe — unsubscribe is a soft state (`unsubscribed_at`).
 - Do NOT hardcode the route prefix — read `config('jamesgifford.hold.routes.prefix')`.
