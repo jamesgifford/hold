@@ -95,6 +95,14 @@ independent of your app's config cache and of Laravel's maintenance mode.
 - `jamesgifford:hold:disable` deactivates it. If `auto_announce_on_up` is on, it
   schedules the launch announcement after the configured delay.
 
+**Preview links and bypass cookies are valid per-activation.** Each enable mints
+a fresh random token (stored as the flag file's contents); the preview link and
+the bypass cookie both carry it, and a request is waved through only when its
+token matches the current activation. **Disabling the hold revokes every
+outstanding preview link and bypass cookie** — re-enabling issues a new token, so
+old links (even with a still-valid signature) and old cookies stop working. Share
+the link printed by the most recent `enable`.
+
 The `PrelaunchMode` middleware is registered **globally**. When no hold is active
 it is a near-zero-cost no-op (a single `is_file()` check), so the overhead on
 normal traffic is negligible. The response status is configurable

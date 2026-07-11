@@ -21,7 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Two escape hatches stay reachable during a hold: the package's own routes
  * (so the signup/unsubscribe/preview endpoints keep working) and any request
- * carrying a valid bypass cookie (so the team can preview the real app).
+ * whose bypass cookie carries the CURRENT activation token (so the team can
+ * preview the real app). A cookie from a previous activation no longer matches.
  */
 final class PrelaunchMode
 {
@@ -36,7 +37,7 @@ final class PrelaunchMode
             return $next($request);
         }
 
-        if ($this->isPackageRoute($request) || $this->bypass->validFromRequest($request)) {
+        if ($this->isPackageRoute($request) || $this->hasValidBypass($request)) {
             return $next($request);
         }
 
@@ -45,6 +46,25 @@ final class PrelaunchMode
             $this->statusCode(),
             ['Content-Type' => 'text/html; charset=UTF-8'],
         );
+    }
+
+    /**
+     * Whether the request carries a bypass cookie whose token matches the
+     * current activation. A cookie issued before the last disable/enable no
+     * longer matches, so it stops working automatically — no error, just the
+     * holding page.
+     */
+    private function hasValidBypass(Request $request): bool
+    {
+        $token = $this->state->token();
+
+        if ($token === null) {
+            return false;
+        }
+
+        $presented = $this->bypass->tokenFromRequest($request);
+
+        return $presented !== null && hash_equals($token, $presented);
     }
 
     /**

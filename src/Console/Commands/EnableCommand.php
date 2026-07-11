@@ -42,7 +42,7 @@ final class EnableCommand extends Command
 
         $this->info('Prelaunch mode enabled. Visitors now see the "coming soon" holding page.');
         $this->afterEnable($state);
-        $this->printPreviewLink();
+        $this->printPreviewLink($state);
 
         return self::SUCCESS;
     }
@@ -80,7 +80,7 @@ final class EnableCommand extends Command
         return $this->confirm('This app appears to be in production. Enable prelaunch mode and show every visitor the holding page?', false);
     }
 
-    private function printPreviewLink(): void
+    private function printPreviewLink(HoldState $state): void
     {
         if (! Route::has('hold.preview')) {
             $this->newLine();
@@ -90,9 +90,11 @@ final class EnableCommand extends Command
             return;
         }
 
+        // Carry the current activation token so the link is revoked the moment
+        // the hold is disabled (and re-enabling issues a fresh one).
         $this->newLine();
         $this->line('Preview the real app (sets a bypass cookie) with this signed link:');
         $this->newLine();
-        $this->line('    '.URL::signedRoute('hold.preview'));
+        $this->line('    '.URL::signedRoute('hold.preview', ['token' => $state->token()]));
     }
 }

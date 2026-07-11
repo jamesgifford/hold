@@ -50,8 +50,10 @@ it('returns the configured status code for the holding page', function () {
 it('lets a request carrying a valid bypass cookie reach the real app', function () {
     app(HoldState::class)->enable();
 
-    // The signed preview route sets the (encrypted) bypass cookie.
-    $preview = $this->get(URL::signedRoute('hold.preview'));
+    // The signed preview route (carrying the current activation token) sets the
+    // (encrypted) bypass cookie.
+    $token = app(HoldState::class)->token();
+    $preview = $this->get(URL::signedRoute('hold.preview', ['token' => $token]));
     $preview->assertRedirect('/');
 
     $name = config('jamesgifford.hold.prelaunch.bypass_cookie_name');
@@ -73,9 +75,9 @@ it('still shows the holding page for an absent or forged bypass cookie', functio
     // Absent.
     $this->get('/')->assertSee('Coming soon');
 
-    // Forged: withCookie encrypts it like a browser, but the marker won't match.
+    // Forged: withCookie encrypts it like a browser, but the token won't match.
     $name = config('jamesgifford.hold.prelaunch.bypass_cookie_name');
-    $this->withCookie($name, 'not-the-marker')
+    $this->withCookie($name, 'not-the-current-token')
         ->get('/')
         ->assertSee('Coming soon')
         ->assertDontSee('REAL APP HOMEPAGE');
@@ -85,7 +87,8 @@ it('honors the configured bypass cookie lifetime', function () {
     config()->set('jamesgifford.hold.prelaunch.bypass_cookie_lifetime_days', 7);
     app(HoldState::class)->enable();
 
-    $preview = $this->get(URL::signedRoute('hold.preview'));
+    $token = app(HoldState::class)->token();
+    $preview = $this->get(URL::signedRoute('hold.preview', ['token' => $token]));
     $name = config('jamesgifford.hold.prelaunch.bypass_cookie_name');
     $cookie = collect($preview->headers->getCookies())
         ->first(fn ($c) => $c->getName() === $name);
