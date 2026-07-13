@@ -86,8 +86,10 @@ it('renders no unsubscribe link in any public notification', function () {
 
     foreach ([LaunchAnnouncement::class, ServiceRestored::class, HoldSignupReceipt::class] as $class) {
         $mail = (new $class($signup))->toMail($signup);
-        $text = strtolower(implode("\n", array_merge($mail->introLines, $mail->outroLines)));
+        // Copy now lives in the self-contained view, so assert against the
+        // rendered HTML rather than the (now unused) intro/outro lines.
+        $html = strtolower(view($mail->view, $mail->viewData)->render());
 
-        expect($text)->not->toContain('unsubscribe');
+        expect($html)->not->toContain('unsubscribe');
     }
 });

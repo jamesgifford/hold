@@ -58,7 +58,11 @@ final class UninstallCommand extends Command
             $this->line('  - removed legacy '.$this->relative($legacy503));
         }
 
-        $this->pruneEmptyDirectory($this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'hold'));
+        // Prune the mail/ subdirectory first, then the vendor/hold parent — an
+        // empty child would otherwise keep the parent from pruning.
+        $vendorHold = $this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'hold');
+        $this->pruneEmptyDirectory($vendorHold.DIRECTORY_SEPARATOR.'mail');
+        $this->pruneEmptyDirectory($vendorHold);
 
         $this->removeStorage($state);
 
@@ -77,7 +81,7 @@ final class UninstallCommand extends Command
         $this->warn('This will remove:');
         $this->line('  • config/jamesgifford/hold.php');
         $this->line('  • the published HoldSignup model');
-        $this->line('  • the published views (prelaunch, maintenance, unsubscribed, errors/503 shim)');
+        $this->line('  • the published views (prelaunch, maintenance, announcement email, errors/503 shim)');
         $this->line('  • the storage/jamesgifford/hold/ directory');
 
         if ($keepData) {

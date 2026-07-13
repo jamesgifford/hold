@@ -8,11 +8,15 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
 
 /**
  * "We've launched" — sent to prelaunch-context signups when the coming-soon
  * hold ends. Override via config notifications.classes.launch_announcement.
+ *
+ * Body renders through the package's self-contained hold::mail.announcement
+ * template (the published copy wins when present); edit copy/links/colors there.
  */
 class LaunchAnnouncement extends Notification
 {
@@ -33,9 +37,15 @@ class LaunchAnnouncement extends Notification
     {
         $mail = (new MailMessage)
             ->subject('We\'re live!')
-            ->greeting('We\'ve launched!')
-            ->line('Thanks for your patience — the wait is over and we\'re now live.')
-            ->action('Take a look', url('/'));
+            ->view('hold::mail.announcement', [
+                'signup' => $this->signup,
+                'context' => HoldSignupContext::Prelaunch,
+                'heading' => 'We\'ve launched!',
+                'body' => 'Thanks for your patience — the wait is over and we\'re now live.',
+                'actionText' => 'Take a look',
+                'actionUrl' => url('/'),
+                'footnote' => 'You\'re receiving this because you asked to be notified.',
+            ]);
 
         return $this->applyFrom($mail);
     }

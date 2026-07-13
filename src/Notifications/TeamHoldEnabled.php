@@ -14,6 +14,9 @@ use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
  * Internal heads-up to the team that a hold has begun. Sent to the configured
  * team addresses via an on-demand mail route (no User model needed). Override
  * by pointing config notifications.classes.team_hold_enabled at a subclass.
+ *
+ * Body renders through the package's self-contained hold::mail.announcement
+ * template (the published copy wins when present) — no Laravel mail layout.
  */
 class TeamHoldEnabled extends Notification
 {
@@ -38,9 +41,16 @@ class TeamHoldEnabled extends Notification
 
         $mail = (new MailMessage)
             ->subject($mode.' hold enabled')
-            ->line($mode.' mode is now active for your application.')
-            ->line('Visitors are seeing the holding page and can leave their email to be notified.')
-            ->line('Run `php artisan jamesgifford:hold:announce` (or disable the hold with auto-announce enabled) when you are ready to email them.');
+            ->view('hold::mail.announcement', [
+                'context' => $this->context,
+                'heading' => $mode.' hold enabled',
+                'body' => [
+                    $mode.' mode is now active for your application.',
+                    'Visitors are seeing the holding page and can leave their email to be notified.',
+                    'Run `php artisan jamesgifford:hold:announce` (or disable the hold with auto-announce enabled) when you are ready to email them.',
+                ],
+                'footnote' => 'Internal notification — sent to your configured team addresses.',
+            ]);
 
         return $this->applyFrom($mail);
     }

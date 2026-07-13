@@ -64,10 +64,10 @@ trait ManagesHoldAssets
 
     /**
      * Published views: [source => target]. The holding-page templates (prelaunch,
-     * maintenance, unsubscribed) go to the vendor views path — edit them there.
-     * The 503 view is a thin shim that goes to the app's errors directory so
-     * Laravel renders it during native maintenance mode; it just includes the
-     * maintenance template.
+     * maintenance) and the announcement email template go to the vendor views
+     * path — edit them there. The 503 view is a thin shim that goes to the app's
+     * errors directory so Laravel renders it during native maintenance mode; it
+     * just includes the maintenance template.
      *
      * @return array<string, string>
      */
@@ -79,6 +79,7 @@ trait ManagesHoldAssets
         return [
             $root.'/prelaunch.blade.php' => $vendor.DIRECTORY_SEPARATOR.'prelaunch.blade.php',
             $root.'/maintenance.blade.php' => $vendor.DIRECTORY_SEPARATOR.'maintenance.blade.php',
+            $root.'/mail/announcement.blade.php' => $vendor.DIRECTORY_SEPARATOR.'mail'.DIRECTORY_SEPARATOR.'announcement.blade.php',
             $root.'/errors/503.blade.php' => $this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'errors'.DIRECTORY_SEPARATOR.'503.blade.php'),
         ];
     }

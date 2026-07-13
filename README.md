@@ -234,10 +234,36 @@ prelaunch (or bringing the app back `up`) dispatches the announcement after
 `announce_delay_minutes`. That delay is a change-of-mind window: if the same hold
 is active again when the job runs, it aborts silently and emails no one.
 
-### Replacing the notification classes
+### Customizing the announcement emails
 
-Point any entry under `notifications.classes` at your own subclass to fully
-customize copy or channels — the package resolves the class name at send time:
+Every package email — launch, restore, the optional receipt, and the team
+notice — renders through **one** self-contained HTML template with inline styles
+and **no dependency on Laravel's mail markdown layout** (no logo, no theme, no
+build step). Two levels of control:
+
+**1. Edit copy, links, and colors — edit the published template.** Setup
+publishes it alongside the other views to
+`resources/views/vendor/hold/mail/announcement.blade.php`; the package falls back
+to its own copy until you do. The palette is a block of plain PHP variables at
+the very top of the file (email clients support CSS custom properties poorly, so
+these are interpolated into inline styles):
+
+```php
+$bg     = '#f5f6f8';  // page background
+$card   = '#ffffff';  // card background
+$text   = '#1a1d24';  // body text
+$muted  = '#6b7280';  // secondary / footnote text
+$accent = '#2563eb';  // heading, button, links
+```
+
+Change those five lines to reskin every email; edit the markup below them to
+adjust wording, add links, or restructure. Each notification passes in its own
+`$heading` and `$body`, so the same file serves all four messages.
+
+**2. Change structure or channels — replace the notification class.** Point any
+entry under `notifications.classes` at your own subclass to take over `toMail()`
+entirely (a different template, extra channels, etc.) — the package resolves the
+class name at send time:
 
 ```php
 // config/jamesgifford/hold.php
@@ -312,7 +338,27 @@ URIs are "package routes".
 
 ## Customizing the views
 
-The prelaunch and maintenance views are self-contained single Blade files with
+Every package view is published into Laravel's standard vendor-views location so
+you own an editable copy:
+
+```
+resources/views/vendor/hold/
+├── prelaunch.blade.php
+├── maintenance.blade.php
+└── mail/
+    └── announcement.blade.php
+```
+
+**How overriding works.** The package registers these under the `hold::` view
+namespace, so a published copy in `resources/views/vendor/hold/` **automatically
+overrides** the package default — the package renders your copy when it exists
+and its own otherwise. To revert a view to the shipped default, just **delete the
+published file**; no config toggle is involved. (The one exception to the layout
+is `resources/views/errors/503.blade.php` — Laravel dictates that path for the
+maintenance response; it's a thin shim that renders `hold::maintenance`, so you
+edit `maintenance.blade.php`, not the shim.)
+
+The prelaunch and maintenance pages are self-contained single Blade files with
 inline CSS and **no build step** — they render even when your app is half-broken.
 Each declares four CSS custom properties at the top for a three-line reskin:
 
@@ -325,10 +371,10 @@ Each declares four CSS custom properties at the top for a three-line reskin:
 }
 ```
 
-Setup publishes them to `resources/views/vendor/hold/prelaunch.blade.php` and
-`resources/views/vendor/hold/maintenance.blade.php`; edit them freely. The
-`resources/views/errors/503.blade.php` shim just includes the maintenance view,
-so you rarely touch it.
+The announcement email template lives alongside them at
+`mail/announcement.blade.php` — see
+[Customizing the announcement emails](#customizing-the-announcement-emails) for
+its palette and copy model.
 
 ## How maintenance integration works (container binding)
 
