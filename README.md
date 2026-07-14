@@ -260,6 +260,33 @@ Change those five lines to reskin every email; edit the markup below them to
 adjust wording, add links, or restructure. Each notification passes in its own
 `$heading` and `$body`, so the same file serves all four messages.
 
+**Add a header (logo or wordmark).** A second variable block just below the
+palette drives an optional header above the heading, with three modes:
+
+```php
+$logoUrl   = null;   // mode A: absolute, publicly hosted image URL
+$logoName  = null;   // mode B: text wordmark (e.g. config('app.name'))
+$logoWidth = 150;    // rendered image width in px
+```
+
+- **Image** — set `$logoUrl`. It **must be an absolute, publicly hosted URL**
+  (email clients can't load local files); use `asset('images/logo.png')` or a
+  CDN link. Any source size works: it renders centered at `$logoWidth` with its
+  aspect ratio preserved (no cropping). A wide/landscape logo (~3:1) suits the
+  layout best, and for crisp high-DPI display point it at a source ~2–3× the
+  rendered width (~300–450px wide for the default 150). Blocked-image clients
+  fall back to the alt text.
+- **Wordmark** — leave `$logoUrl` null and set `$logoName` to render the name as
+  a styled masthead (tweak its look inline, right there in the file).
+- **None** (default) — leave both null; no header and no header spacing render.
+
+If both are set the image wins; the name is still used as the image's alt text.
+
+> **Existing installs:** a template published before this feature won't have the
+> header block. Re-publish it (delete your copy and re-run setup, or
+> `vendor:publish --tag=jamesgifford-hold-views --force`) or hand-add the four
+> variables from the package copy — there is no automatic merge.
+
 **2. Change structure or channels — replace the notification class.** Point any
 entry under `notifications.classes` at your own subclass to take over `toMail()`
 entirely (a different template, extra channels, etc.) — the package resolves the

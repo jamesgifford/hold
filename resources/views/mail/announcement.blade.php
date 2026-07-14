@@ -20,6 +20,26 @@
     $accent = '#2563eb';  // heading, button, links
 
     /*
+     * ── Header (optional) ────────────────────────────────────────────────────
+     * A logo image OR a text wordmark above the heading. Set at most one. Leave
+     * BOTH null (the default) and no header — and no header spacing — renders at
+     * all: the heading is the first thing in the card.
+     */
+    $logoUrl   = null;   // absolute, publicly hosted image URL (email clients
+                         // cannot load local files); e.g. asset('images/logo.png').
+                         // Any logo size works — it renders at $logoWidth with
+                         // aspect ratio preserved. Renders best with a wide /
+                         // landscape logo (roughly 3:1); for sharp high-DPI
+                         // rendering use a source ~2-3x the rendered width
+                         // (~300-450px wide for the default).
+    $logoName  = null;   // text wordmark shown when no image is used,
+                         // e.g. config('app.name')
+    $logoAlt   = $logoName ?? config('app.name');  // img alt text (also used
+                         // when a client blocks the remote image)
+    $logoWidth = 150;    // normalized rendered width (px); sensible default,
+                         // rarely needs changing
+
+    /*
      * Content — supplied by the notification; the defaults keep the template
      * safe to render on its own. $body may be a single string or an array of
      * paragraphs. $actionUrl/$actionText render an optional button; $footnote a
@@ -52,6 +72,14 @@
                 <table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:520px;">
                     <tr>
                         <td style="background:{{ $card }}; border-radius:12px; padding:40px 40px 32px;">
+                            @if ($logoUrl)
+                                <div style="margin:0 0 24px; text-align:center;">
+                                    <img src="{{ $logoUrl }}" alt="{{ $logoAlt }}" width="{{ $logoWidth }}" style="display:inline-block; width:{{ $logoWidth }}px; max-width:100%; height:auto; border:0; outline:none; -ms-interpolation-mode:bicubic;">
+                                </div>
+                            @elseif ($logoName)
+                                {{-- Edit the wordmark's look here --}}
+                                <div style="margin:0 0 24px; text-align:center; font-size:22px; font-weight:800; letter-spacing:0.5px; color:{{ $accent }};">{{ $logoName }}</div>
+                            @endif
                             <h1 style="margin:0 0 20px; font-size:24px; line-height:1.3; font-weight:700; color:{{ $accent }};">{{ $heading }}</h1>
                             @foreach ($lines as $line)
                                 <p style="margin:0 0 16px; font-size:16px; color:{{ $text }};">{{ $line }}</p>
