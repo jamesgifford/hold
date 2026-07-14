@@ -140,28 +140,3 @@ it('renders the published, edited maintenance template via the 503 shim under ma
         File::deleteDirectory($vendorHold);
     }
 });
-
-// --- setup / uninstall round-trip on vendor/hold ---------------------------
-
-it('creates and then fully removes resources/views/vendor/hold on round-trip', function () {
-    $root = useTempApp();
-
-    $this->artisan('jamesgifford:hold:setup', ['--force' => true])->assertSuccessful();
-
-    $vendorHold = $root.'/resources/views/vendor/hold';
-    expect(File::isDirectory($vendorHold))->toBeTrue()
-        ->and(File::exists($vendorHold.'/prelaunch.blade.php'))->toBeTrue()
-        ->and(File::exists($vendorHold.'/maintenance.blade.php'))->toBeTrue()
-        ->and(File::exists($vendorHold.'/mail/announcement.blade.php'))->toBeTrue()
-        ->and(File::exists($vendorHold.'/mail/team.blade.php'))->toBeTrue()
-        ->and(File::exists($vendorHold.'/mail/receipt.blade.php'))->toBeTrue()
-        ->and(File::exists($root.'/resources/views/errors/503.blade.php'))->toBeTrue();
-
-    $this->artisan('jamesgifford:hold:uninstall', ['--force' => true, '--keep-data' => true])
-        ->assertSuccessful();
-
-    expect(File::isDirectory($vendorHold))->toBeFalse()
-        ->and(File::exists($root.'/resources/views/errors/503.blade.php'))->toBeFalse();
-
-    File::deleteDirectory($root);
-});

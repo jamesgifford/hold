@@ -14,7 +14,7 @@ return [
     | Routes
     |--------------------------------------------------------------------------
     |
-    | The package's HTTP surface: the signup, unsubscribe, and preview routes.
+    | The package's HTTP surface: the signup and preview routes.
     | These stay reachable in both hold modes (prelaunch middleware allows them
     | through; the maintenance except-merge subclass adds them to Laravel's
     | maintenance bypass list). Set `register` to false to own routing entirely

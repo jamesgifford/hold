@@ -14,7 +14,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance as Ba
  * PreventRequestsDuringMaintenance, so Laravel resolves this subclass wherever
  * it references the middleware. It merges the package's route URIs (built from
  * the configured prefix) into the excluded-paths list, so the signup /
- * unsubscribe / preview endpoints stay live and the 503 capture form works.
+ * preview endpoints stay live and the 503 capture form works.
  *
  * Because this is a container binding and nothing else, `composer remove` fully
  * reverses the integration — no host-app core file is ever modified.

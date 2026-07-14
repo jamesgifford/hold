@@ -37,14 +37,6 @@ final class BypassCookie
     }
 
     /**
-     * Build an immediately-expired cookie to clear the bypass.
-     */
-    public function forget(): Cookie
-    {
-        return cookie()->forget($this->name());
-    }
-
-    /**
      * The bypass token carried by the request's cookie, or null when the cookie
      * is absent or not a valid app-minted cookie. Safe to call before
      * EncryptCookies has run.

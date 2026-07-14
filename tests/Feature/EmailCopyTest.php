@@ -54,8 +54,18 @@ it('renders each email\'s default wording on a fresh install', function () {
     $teamMaintenance = renderMailBody(new TeamHoldEnabled(HoldSignupContext::Maintenance));
 
     // {{ }} escapes apostrophes, so match apostrophe-free fragments of the copy.
-    expect($launch)->toContain('launched!')->toContain('<!-- hold:announcement -->');
-    expect($restore)->toContain('back!')->toContain('<!-- hold:announcement -->');
+    // The negatives prove these render through the self-contained templates, not
+    // Laravel's markdown mail layout (no `content-cell` / `mail::message` markers).
+    expect($launch)
+        ->toContain('launched!')
+        ->toContain('<!-- hold:announcement -->')
+        ->not->toContain('content-cell')
+        ->not->toContain('mail::message');
+    expect($restore)
+        ->toContain('back!')
+        ->toContain('<!-- hold:announcement -->')
+        ->not->toContain('content-cell')
+        ->not->toContain('mail::message');
     expect($receipt)->toContain('on the list')->toContain('<!-- hold:receipt -->');
     // The double quotes in the prelaunch heading escape to &quot;, so match
     // quote-free fragments.

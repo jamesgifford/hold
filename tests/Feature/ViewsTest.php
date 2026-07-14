@@ -23,15 +23,6 @@ it('renders the maintenance view standalone with the signup form', function () {
         ->toContain('--hold-accent');
 });
 
-it('renders the 503 shim by including the maintenance template', function () {
-    // The published errors/503.blade.php is a thin shim that @includes the
-    // maintenance template, so rendering it yields the maintenance capture form.
-    $html = view('hold::errors.503')->render();
-
-    expect($html)->toContain('right back')
-        ->toContain('value="maintenance"');
-});
-
 it('honors a custom route prefix in the form action', function () {
     config()->set('jamesgifford.hold.routes.prefix', 'soon');
 

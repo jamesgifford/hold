@@ -2,6 +2,15 @@
     "name": "jamesgifford/hold",
     "description": "Reusable \"coming soon\" (pre-launch) and enhanced maintenance-mode holding pages for Laravel, with email-capture signup and launch/restore announcement notifications.",
     "type": "library",
+    "keywords": [
+        "laravel",
+        "coming-soon",
+        "prelaunch",
+        "maintenance-mode",
+        "holding-page",
+        "email-capture",
+        "waitlist"
+    ],
     "license": "MIT",
     "authors": [
         {

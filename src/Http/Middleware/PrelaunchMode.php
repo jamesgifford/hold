@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  * hold is deliberately active.
  *
  * Two escape hatches stay reachable during a hold: the package's own routes
- * (so the signup/unsubscribe/preview endpoints keep working) and any request
+ * (so the signup/preview endpoints keep working) and any request
  * whose bypass cookie carries the CURRENT activation token (so the team can
  * preview the real app). A cookie from a previous activation no longer matches.
  */

@@ -60,8 +60,8 @@ Both holding pages POST to the `hold.signup` route. Behavior to rely on:
 
 **Unsubscribe is an app-owned data contract.** The package keeps `unsubscribed_at`
 and excludes those rows from every email (announce + receipt), but ships NO
-user-facing unsubscribe (no route, no link). Set/clear it via `Signup::unsubscribe()`
-/ `Signup::resubscribe()`, or the operator command `jamesgifford:hold:unsubscribe
+user-facing unsubscribe (no route, no link). Set/clear it via `HoldSignup::unsubscribe()`
+/ `HoldSignup::resubscribe()`, or the operator command `jamesgifford:hold:unsubscribe
 {email} {--resubscribe}`. The package never sets or clears it on its own.
 
 ## Commands
@@ -92,6 +92,8 @@ Published to `config/jamesgifford/hold.php`:
 - `notifications.team_addresses` (empty = no team notice), `notifications.send_signup_receipt`,
   `notifications.auto_announce_on_up`, `notifications.announce_delay_minutes` (the
   change-of-mind delay before an auto-announce sends).
+- `notifications.subject_launch` / `notifications.subject_restored` — the two
+  announcement subject lines (body copy lives in the email templates).
 - `spam.rate_limit_per_minute`, `spam.honeypot_field`.
 
 ## Customizing
@@ -99,12 +101,19 @@ Published to `config/jamesgifford/hold.php`:
 - **Model**: `setup` publishes `App\Models\HoldSignup` (resolved via
   `config('jamesgifford.hold.models.signup')`). Edit the published file — do NOT
   edit the package base model in `vendor/`. Point the config at a subclass to swap it.
-- **Views**: reskin by editing the four `--hold-*` CSS custom properties at the
-  top of the published `vendor/hold/prelaunch.blade.php` / `vendor/hold/maintenance.blade.php`
-  (the `errors/503.blade.php` shim just includes the maintenance view).
-- **Notifications**: override any email by pointing a `notifications.classes`
-  entry at your own Notification subclass — the package resolves the class at
-  send time.
+- **Holding pages**: edit the published `vendor/hold/prelaunch.blade.php` /
+  `vendor/hold/maintenance.blade.php` — color via the four `--hold-*` CSS custom
+  properties, and every user-visible string (incl. the `?hold=` success/error
+  messages) via the `$copy` block, both at the top of the file (the
+  `errors/503.blade.php` shim just includes the maintenance view).
+- **Emails**: setup publishes one self-contained template per email —
+  `vendor/hold/mail/{announcement,team,receipt}.blade.php`. Each has top-of-file
+  blocks for the palette, an optional logo/wordmark header, and a `$copy` block
+  with the wording. Subjects for the two announcements are config, not template:
+  `notifications.subject_launch` / `notifications.subject_restored`.
+- **Notifications (structure/channels)**: to change more than copy, point a
+  `notifications.classes` entry at your own Notification subclass — the package
+  resolves the class at send time.
 
 ## Do not
 
