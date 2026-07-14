@@ -1,12 +1,11 @@
 @php
     /*
-     * Hold's self-contained announcement email — "we've launched" (prelaunch)
-     * and "we're back" (maintenance).
+     * Hold's self-contained signup-receipt email — the optional "you're on the
+     * list" confirmation sent to a new signup when the receipt option is on.
      *
-     * There is NO dependency on Laravel's mail markdown components or theme —
-     * no build step, no shared layout. The launch and restore notifications
-     * render this file via ->view(), passing only $signup and $context; every
-     * user-visible string lives in the blocks below.
+     * No Laravel mail markdown, theme, or build step — everything is in this one
+     * file. The receipt notification renders it via ->view(); every user-visible
+     * string lives in the blocks below.
      *
      * ── Palette ────────────────────────────────────────────────────────────
      * Edit these five values to match your brand. They are plain PHP variables
@@ -17,7 +16,7 @@
     $card   = '#ffffff';  // card background
     $text   = '#1a1d24';  // body text
     $muted  = '#6b7280';  // secondary / footnote text
-    $accent = '#2563eb';  // heading, button, links
+    $accent = '#2563eb';  // heading, links
 
     /*
      * ── Header (optional) ────────────────────────────────────────────────────
@@ -41,33 +40,19 @@
 
     /*
      * ── Copy ─────────────────────────────────────────────────────────────────
-     * Edit the email's text here — each hold mode has its own set. The button
-     * 'url' defaults to your app URL.
+     * Edit the email's text here.
      */
     $copy = [
-        'prelaunch' => [
-            'heading' => 'We\'ve launched!',
-            'body'    => 'Thanks for your patience — the wait is over and we\'re now live.',
-            'button'  => 'Take a look',
-            'url'     => config('app.url'),
-        ],
-        'maintenance' => [
-            'heading' => 'We\'re back!',
-            'body'    => 'Maintenance is complete and everything is up and running again.',
-            'button'  => 'Return to the site',
-            'url'     => config('app.url'),
-        ],
+        'heading' => 'You\'re on the list',
+        'body'    => 'Thanks — we\'ve added you to the list and will email you once when there\'s news.',
     ];
-    // Small line beneath the card (shared by both modes).
-    $footnote = 'You\'re receiving this because you asked to be notified.';
+    // Small line beneath the card.
+    $footnote = 'You\'re receiving this because you signed up to be notified.';
 
-    /* Resolve this send's set from $context (the notification passes the enum). */
-    $mode       = $context instanceof \JamesGifford\Hold\HoldSignupContext ? $context->value : ($context ?? 'prelaunch');
-    $set        = $copy[$mode] ?? $copy['prelaunch'];
-    $heading    = $set['heading'];
-    $lines      = (array) $set['body'];
-    $actionText = $set['button'];
-    $actionUrl  = $set['url'];
+    $heading    = $copy['heading'];
+    $lines      = (array) $copy['body'];
+    $actionUrl  = null;   // the receipt carries no call-to-action button
+    $actionText = null;
 @endphp
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -79,7 +64,7 @@
     <title>{{ $heading }}</title>
 </head>
 <body style="margin:0; padding:0; width:100%; background:{{ $bg }}; color:{{ $text }}; -webkit-text-size-adjust:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; line-height:1.6;">
-    <!-- hold:announcement -->
+    <!-- hold:receipt -->
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ $bg }};">
         <tr>

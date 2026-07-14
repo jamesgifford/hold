@@ -16,7 +16,9 @@ use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
  * hold ends. Override via config notifications.classes.launch_announcement.
  *
  * Body renders through the package's self-contained hold::mail.announcement
- * template (the published copy wins when present); edit copy/links/colors there.
+ * template (the published copy wins when present); the wording lives in that
+ * template's top-of-file $copy['prelaunch'] set. The subject is config-driven
+ * (notifications.subject_launch).
  */
 class LaunchAnnouncement extends Notification
 {
@@ -36,15 +38,10 @@ class LaunchAnnouncement extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject('We\'re live!')
+            ->subject((string) config('jamesgifford.hold.notifications.subject_launch', 'We\'re live!'))
             ->view('hold::mail.announcement', [
                 'signup' => $this->signup,
                 'context' => HoldSignupContext::Prelaunch,
-                'heading' => 'We\'ve launched!',
-                'body' => 'Thanks for your patience — the wait is over and we\'re now live.',
-                'actionText' => 'Take a look',
-                'actionUrl' => url('/'),
-                'footnote' => 'You\'re receiving this because you asked to be notified.',
             ]);
 
         return $this->applyFrom($mail);

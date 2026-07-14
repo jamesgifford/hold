@@ -5,7 +5,8 @@ declare(strict_types=1);
 it('renders the prelaunch view standalone with the signup form', function () {
     $html = view('hold::prelaunch')->render();
 
-    expect($html)->toContain('We\'re launching soon')
+    // {{ }} escapes the apostrophe in "We're", so match an apostrophe-free fragment.
+    expect($html)->toContain('launching soon')
         ->toContain('name="email"')
         ->toContain('action="'.url('hold/signup').'"')
         // Honeypot field is present but the reskin knobs are declared up top.

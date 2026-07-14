@@ -95,6 +95,12 @@ return [
         // within it, the delayed job aborts silently without emailing anyone.
         'announce_delay_minutes' => 10,
 
+        // Subject lines for the two announcements. The body copy lives in the
+        // published email templates (resources/views/vendor/hold/mail/), but the
+        // subjects are set here so you can adjust them without republishing a view.
+        'subject_launch' => 'We\'re live!',
+        'subject_restored' => 'We\'re back online',
+
         // Notification classes. Override any with your own subclass FQCN.
         'classes' => [
             'team_hold_enabled' => TeamHoldEnabled::class,

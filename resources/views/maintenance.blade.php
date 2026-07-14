@@ -16,13 +16,34 @@
     $action = url($prefix.'/signup');
     $honeypot = config('jamesgifford.hold.spam.honeypot_field', 'website');
     $status = request('hold');
+
+    /*
+     * ── Copy ─────────────────────────────────────────────────────────────────
+     * Edit this page's text here. Every user-visible string lives in this block,
+     * including both form-state messages ('success' after a signup, 'invalid'
+     * for a bad email) — so you can review and reword every state in one place
+     * without having to trigger it.
+     */
+    $copy = [
+        'title'          => 'Temporarily down for maintenance',  // browser tab / <title>
+        'eyebrow'        => 'Maintenance',                        // small label above the heading
+        'heading'        => 'We\'ll be right back',
+        'lede'           => 'We\'re making some improvements and will be back online shortly. Leave your email and we\'ll let you know the moment we\'re back.',
+        'success'        => 'Thanks — we\'ll email you the moment we\'re back online.',
+        'invalid'        => 'Please enter a valid email address.',
+        'email_label'    => 'Email address',
+        'email_placeholder' => 'you@example.com',
+        'button'         => 'Notify me',
+        'note'           => 'We\'ll email you once when we\'re back. Unsubscribe anytime.',
+        'honeypot_label' => 'Leave this field empty',  // off-screen; only bots see it
+    ];
 @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Temporarily down for maintenance</title>
+    <title>{{ $copy['title'] }}</title>
     <style>
         /*
          * Reskin knobs: edit these four values to match your brand. Everything
@@ -158,17 +179,17 @@
 </head>
 <body>
     <main class="hold-card">
-        <p class="hold-eyebrow">Maintenance</p>
-        <h1>We'll be right back</h1>
-        <p class="hold-lede">We're making some improvements and will be back online shortly. Leave your email and we'll let you know the moment we're back.</p>
+        <p class="hold-eyebrow">{{ $copy['eyebrow'] }}</p>
+        <h1>{{ $copy['heading'] }}</h1>
+        <p class="hold-lede">{{ $copy['lede'] }}</p>
 
         @if ($status === 'subscribed')
             <div class="hold-alert hold-alert--success" role="status">
-                Thanks — we'll email you the moment we're back online.
+                {{ $copy['success'] }}
             </div>
         @elseif ($status === 'invalid')
             <div class="hold-alert hold-alert--error" role="alert">
-                Please enter a valid email address.
+                {{ $copy['invalid'] }}
             </div>
         @endif
 
@@ -177,20 +198,20 @@
 
             {{-- Honeypot: real people never see or fill this. --}}
             <div class="hold-hp" aria-hidden="true">
-                <label for="{{ $honeypot }}">Leave this field empty</label>
+                <label for="{{ $honeypot }}">{{ $copy['honeypot_label'] }}</label>
                 <input type="text" id="{{ $honeypot }}" name="{{ $honeypot }}" tabindex="-1" autocomplete="off">
             </div>
 
             <div class="hold-field">
-                <label for="hold-email">Email address</label>
+                <label for="hold-email">{{ $copy['email_label'] }}</label>
                 <input type="email" id="hold-email" name="email"
-                       placeholder="you@example.com" required autofocus>
+                       placeholder="{{ $copy['email_placeholder'] }}" required autofocus>
             </div>
 
-            <button type="submit" class="hold-button">Notify me</button>
+            <button type="submit" class="hold-button">{{ $copy['button'] }}</button>
         </form>
 
-        <p class="hold-note">We'll email you once when we're back. Unsubscribe anytime.</p>
+        <p class="hold-note">{{ $copy['note'] }}</p>
     </main>
 </body>
 </html>

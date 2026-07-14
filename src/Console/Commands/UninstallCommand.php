@@ -81,7 +81,7 @@ final class UninstallCommand extends Command
         $this->warn('This will remove:');
         $this->line('  • config/jamesgifford/hold.php');
         $this->line('  • the published HoldSignup model');
-        $this->line('  • the published views (prelaunch, maintenance, announcement email, errors/503 shim)');
+        $this->line('  • the published views (prelaunch, maintenance, email templates, errors/503 shim)');
         $this->line('  • the storage/jamesgifford/hold/ directory');
 
         if ($keepData) {

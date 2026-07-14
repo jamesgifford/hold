@@ -15,8 +15,9 @@ use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
  * team addresses via an on-demand mail route (no User model needed). Override
  * by pointing config notifications.classes.team_hold_enabled at a subclass.
  *
- * Body renders through the package's self-contained hold::mail.announcement
- * template (the published copy wins when present) — no Laravel mail layout.
+ * Body renders through the package's self-contained hold::mail.team template
+ * (the published copy wins when present) — no Laravel mail layout. All wording
+ * lives in that template's top-of-file $copy block.
  */
 class TeamHoldEnabled extends Notification
 {
@@ -41,15 +42,8 @@ class TeamHoldEnabled extends Notification
 
         $mail = (new MailMessage)
             ->subject($mode.' hold enabled')
-            ->view('hold::mail.announcement', [
+            ->view('hold::mail.team', [
                 'context' => $this->context,
-                'heading' => $mode.' hold enabled',
-                'body' => [
-                    $mode.' mode is now active for your application.',
-                    'Visitors are seeing the holding page and can leave their email to be notified.',
-                    'Run `php artisan jamesgifford:hold:announce` (or disable the hold with auto-announce enabled) when you are ready to email them.',
-                ],
-                'footnote' => 'Internal notification — sent to your configured team addresses.',
             ]);
 
         return $this->applyFrom($mail);

@@ -53,7 +53,7 @@ it('uses the published copy when one is present (override wins over the package 
     // give it precedence, mirroring real vendor-view resolution.
     $override = sys_get_temp_dir().'/hold-mail-'.uniqid();
     File::ensureDirectoryExists($override.'/mail');
-    File::put($override.'/mail/announcement.blade.php', 'EDITED-PUBLISHED-COPY :: {{ $heading }}');
+    File::put($override.'/mail/announcement.blade.php', 'EDITED-PUBLISHED-COPY');
 
     View::prependNamespace('hold', $override);
     View::flushFinderCache();
@@ -64,7 +64,6 @@ it('uses the published copy when one is present (override wins over the package 
         // The edit shows through, and the package default no longer renders.
         expect($html)
             ->toContain('EDITED-PUBLISHED-COPY')
-            ->toContain('launched!')                 // the passed heading still interpolates
             ->not->toContain('<!-- hold:announcement -->');
     } finally {
         File::deleteDirectory($override);

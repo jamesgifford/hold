@@ -15,8 +15,9 @@ use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
  * notifications.send_signup_receipt is true. Override via
  * config notifications.classes.signup_receipt.
  *
- * Body renders through the package's self-contained hold::mail.announcement
- * template (the published copy wins when present); edit copy/links/colors there.
+ * Body renders through the package's self-contained hold::mail.receipt template
+ * (the published copy wins when present); edit copy/links/colors there. All
+ * wording lives in that template's top-of-file $copy block.
  */
 class HoldSignupReceipt extends Notification
 {
@@ -37,12 +38,8 @@ class HoldSignupReceipt extends Notification
     {
         $mail = (new MailMessage)
             ->subject('You\'re on the list')
-            ->view('hold::mail.announcement', [
+            ->view('hold::mail.receipt', [
                 'signup' => $this->signup,
-                'context' => null,
-                'heading' => 'You\'re on the list',
-                'body' => 'Thanks — we\'ve added you to the list and will email you once when there\'s news.',
-                'footnote' => 'You\'re receiving this because you signed up to be notified.',
             ]);
 
         return $this->applyFrom($mail);

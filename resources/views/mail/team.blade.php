@@ -1,12 +1,11 @@
 @php
     /*
-     * Hold's self-contained announcement email — "we've launched" (prelaunch)
-     * and "we're back" (maintenance).
+     * Hold's self-contained team-notice email — the internal "hold enabled"
+     * heads-up sent to your configured team addresses.
      *
-     * There is NO dependency on Laravel's mail markdown components or theme —
-     * no build step, no shared layout. The launch and restore notifications
-     * render this file via ->view(), passing only $signup and $context; every
-     * user-visible string lives in the blocks below.
+     * No Laravel mail markdown, theme, or build step — everything is in this one
+     * file. The team notification renders it via ->view(), passing only
+     * $context; every user-visible string lives in the blocks below.
      *
      * ── Palette ────────────────────────────────────────────────────────────
      * Edit these five values to match your brand. They are plain PHP variables
@@ -17,7 +16,7 @@
     $card   = '#ffffff';  // card background
     $text   = '#1a1d24';  // body text
     $muted  = '#6b7280';  // secondary / footnote text
-    $accent = '#2563eb';  // heading, button, links
+    $accent = '#2563eb';  // heading, links
 
     /*
      * ── Header (optional) ────────────────────────────────────────────────────
@@ -41,33 +40,36 @@
 
     /*
      * ── Copy ─────────────────────────────────────────────────────────────────
-     * Edit the email's text here — each hold mode has its own set. The button
-     * 'url' defaults to your app URL.
+     * Edit the email's text here — each hold mode has its own set.
      */
     $copy = [
         'prelaunch' => [
-            'heading' => 'We\'ve launched!',
-            'body'    => 'Thanks for your patience — the wait is over and we\'re now live.',
-            'button'  => 'Take a look',
-            'url'     => config('app.url'),
+            'heading' => 'Prelaunch ("coming soon") hold enabled',
+            'body'    => [
+                'Prelaunch ("coming soon") mode is now active for your application.',
+                'Visitors are seeing the holding page and can leave their email to be notified.',
+                'Run `php artisan jamesgifford:hold:announce` (or disable the hold with auto-announce enabled) when you are ready to email them.',
+            ],
         ],
         'maintenance' => [
-            'heading' => 'We\'re back!',
-            'body'    => 'Maintenance is complete and everything is up and running again.',
-            'button'  => 'Return to the site',
-            'url'     => config('app.url'),
+            'heading' => 'Maintenance hold enabled',
+            'body'    => [
+                'Maintenance mode is now active for your application.',
+                'Visitors are seeing the holding page and can leave their email to be notified.',
+                'Run `php artisan jamesgifford:hold:announce` (or disable the hold with auto-announce enabled) when you are ready to email them.',
+            ],
         ],
     ];
-    // Small line beneath the card (shared by both modes).
-    $footnote = 'You\'re receiving this because you asked to be notified.';
+    // Small line beneath the card.
+    $footnote = 'Internal notification — sent to your configured team addresses.';
 
     /* Resolve this send's set from $context (the notification passes the enum). */
     $mode       = $context instanceof \JamesGifford\Hold\HoldSignupContext ? $context->value : ($context ?? 'prelaunch');
     $set        = $copy[$mode] ?? $copy['prelaunch'];
     $heading    = $set['heading'];
     $lines      = (array) $set['body'];
-    $actionText = $set['button'];
-    $actionUrl  = $set['url'];
+    $actionUrl  = null;   // the team notice carries no call-to-action button
+    $actionText = null;
 @endphp
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -79,7 +81,7 @@
     <title>{{ $heading }}</title>
 </head>
 <body style="margin:0; padding:0; width:100%; background:{{ $bg }}; color:{{ $text }}; -webkit-text-size-adjust:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; line-height:1.6;">
-    <!-- hold:announcement -->
+    <!-- hold:team -->
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ $bg }};">
         <tr>

@@ -34,6 +34,8 @@ it('publishes every asset at its exact path (with extensions) and migrates', fun
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/prelaunch.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/maintenance.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/announcement.blade.php'))->toBeTrue()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/team.blade.php'))->toBeTrue()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/receipt.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/storage/jamesgifford/hold/.gitignore'))->toBeTrue();

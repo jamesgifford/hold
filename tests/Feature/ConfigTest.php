@@ -29,6 +29,8 @@ it('merges every documented config default', function () {
         'send_signup_receipt' => false,
         'auto_announce_on_up' => false,
         'announce_delay_minutes' => 10,
+        'subject_launch' => 'We\'re live!',
+        'subject_restored' => 'We\'re back online',
     ]);
 
     expect($config['notifications']['classes'])->toMatchArray([

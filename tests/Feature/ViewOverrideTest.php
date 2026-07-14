@@ -46,16 +46,17 @@ afterEach(function () {
 it('renders all three views from the package when no copy is published', function () {
     // No vendor/hold hint registered, so the finder falls back to the package.
     expect(view('hold::prelaunch')->render())
-        ->toContain('We\'re launching soon')
+        ->toContain('launching soon')
         ->toContain('--hold-accent');
 
     expect(view('hold::maintenance')->render())
         ->toContain('right back')
         ->toContain('value="maintenance"');
 
-    expect(view('hold::mail.announcement', ['heading' => 'Hi', 'body' => 'Body'])->render())
+    // The announcement copy is context-keyed in the template's $copy block.
+    expect(view('hold::mail.announcement', ['context' => 'prelaunch'])->render())
         ->toContain('<!-- hold:announcement -->')
-        ->toContain('Hi');
+        ->toContain('launched!');
 });
 
 // --- published copy wins ----------------------------------------------------
@@ -74,7 +75,7 @@ it('renders the published, edited copy in preference to the package default', fu
 
     expect(view('hold::prelaunch')->render())
         ->toContain('EDITED-PRELAUNCH-COPY')
-        ->not->toContain('We\'re launching soon');   // the package default no longer wins
+        ->not->toContain('launching soon');   // the package default no longer wins
 
     expect(view('hold::mail.announcement', ['heading' => 'Launched'])->render())
         ->toContain('EDITED-ANNOUNCEMENT-COPY')
@@ -102,7 +103,7 @@ it('falls back to the package copy when a published file is deleted', function (
     View::flushFinderCache();
 
     expect(view('hold::prelaunch')->render())
-        ->toContain('We\'re launching soon')
+        ->toContain('launching soon')
         ->not->toContain('EDITED-PRELAUNCH-COPY');
 
     File::deleteDirectory($root);
@@ -152,6 +153,8 @@ it('creates and then fully removes resources/views/vendor/hold on round-trip', f
         ->and(File::exists($vendorHold.'/prelaunch.blade.php'))->toBeTrue()
         ->and(File::exists($vendorHold.'/maintenance.blade.php'))->toBeTrue()
         ->and(File::exists($vendorHold.'/mail/announcement.blade.php'))->toBeTrue()
+        ->and(File::exists($vendorHold.'/mail/team.blade.php'))->toBeTrue()
+        ->and(File::exists($vendorHold.'/mail/receipt.blade.php'))->toBeTrue()
         ->and(File::exists($root.'/resources/views/errors/503.blade.php'))->toBeTrue();
 
     $this->artisan('jamesgifford:hold:uninstall', ['--force' => true, '--keep-data' => true])

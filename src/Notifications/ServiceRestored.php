@@ -16,7 +16,9 @@ use JamesGifford\Hold\Notifications\Concerns\FormatsHoldMail;
  * Override via config notifications.classes.service_restored.
  *
  * Body renders through the package's self-contained hold::mail.announcement
- * template (the published copy wins when present); edit copy/links/colors there.
+ * template (the published copy wins when present); the wording lives in that
+ * template's top-of-file $copy['maintenance'] set. The subject is config-driven
+ * (notifications.subject_restored).
  */
 class ServiceRestored extends Notification
 {
@@ -36,15 +38,10 @@ class ServiceRestored extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject('We\'re back online')
+            ->subject((string) config('jamesgifford.hold.notifications.subject_restored', 'We\'re back online'))
             ->view('hold::mail.announcement', [
                 'signup' => $this->signup,
                 'context' => HoldSignupContext::Maintenance,
-                'heading' => 'We\'re back!',
-                'body' => 'Maintenance is complete and everything is up and running again.',
-                'actionText' => 'Return to the site',
-                'actionUrl' => url('/'),
-                'footnote' => 'You\'re receiving this because you asked to be notified.',
             ]);
 
         return $this->applyFrom($mail);

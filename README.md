@@ -236,32 +236,45 @@ is active again when the job runs, it aborts silently and emails no one.
 
 ### Customizing the announcement emails
 
-Every package email — launch, restore, the optional receipt, and the team
-notice — renders through **one** self-contained HTML template with inline styles
-and **no dependency on Laravel's mail markdown layout** (no logo, no theme, no
-build step). Two levels of control:
+Every package email renders through a **self-contained HTML template** with
+inline styles and **no dependency on Laravel's mail markdown layout** (no theme,
+no build step). Setup publishes three, one per email, that you own and edit:
 
-**1. Edit copy, links, and colors — edit the published template.** Setup
-publishes it alongside the other views to
-`resources/views/vendor/hold/mail/announcement.blade.php`; the package falls back
-to its own copy until you do. The palette is a block of plain PHP variables at
-the very top of the file (email clients support CSS custom properties poorly, so
-these are interpolated into inline styles):
+| Template | Email |
+| --- | --- |
+| `resources/views/vendor/hold/mail/announcement.blade.php` | launch & restore announcements |
+| `resources/views/vendor/hold/mail/team.blade.php` | the internal "hold enabled" team notice |
+| `resources/views/vendor/hold/mail/receipt.blade.php` | the optional signup receipt |
+
+The package falls back to its own copy of each until you publish. Two levels of
+control:
+
+**1. Edit colors, header, and copy — edit the published template.** Everything
+a developer changes lives in plain-PHP variable blocks at the very top of each
+file (email clients support CSS custom properties poorly, so these are
+interpolated into the inline styles). **Colors** — a five-value palette:
 
 ```php
-$bg     = '#f5f6f8';  // page background
-$card   = '#ffffff';  // card background
-$text   = '#1a1d24';  // body text
-$muted  = '#6b7280';  // secondary / footnote text
-$accent = '#2563eb';  // heading, button, links
+$bg = '#f5f6f8'; $card = '#ffffff'; $text = '#1a1d24'; $muted = '#6b7280'; $accent = '#2563eb';
 ```
 
-Change those five lines to reskin every email; edit the markup below them to
-adjust wording, add links, or restructure. Each notification passes in its own
-`$heading` and `$body`, so the same file serves all four messages.
+**Copy** — a `$copy` block holding every string. The announcement template keys
+it by hold mode; edit the wording (and the button label/URL) in place:
 
-**Add a header (logo or wordmark).** A second variable block just below the
-palette drives an optional header above the heading, with three modes:
+```php
+$copy = [
+    'prelaunch'   => ['heading' => 'We\'ve launched!', 'body' => '…', 'button' => 'Take a look', 'url' => config('app.url')],
+    'maintenance' => ['heading' => 'We\'re back!',     'body' => '…', 'button' => 'Return to the site', 'url' => config('app.url')],
+];
+```
+
+**Subjects** stay out of the templates so you can tweak them without
+republishing a view — set `notifications.subject_launch` and
+`notifications.subject_restored` in config.
+
+**Add a header (logo or wordmark).** A third variable block (in every email
+template) just below the palette drives an optional header above the heading,
+with three modes:
 
 ```php
 $logoUrl   = null;   // mode A: absolute, publicly hosted image URL
@@ -282,10 +295,10 @@ $logoWidth = 150;    // rendered image width in px
 
 If both are set the image wins; the name is still used as the image's alt text.
 
-> **Existing installs:** a template published before this feature won't have the
-> header block. Re-publish it (delete your copy and re-run setup, or
-> `vendor:publish --tag=jamesgifford-hold-views --force`) or hand-add the four
-> variables from the package copy — there is no automatic merge.
+> **Existing installs:** a template published before these features won't have
+> the header or `$copy` blocks. Re-publish it (delete your copy and re-run setup,
+> or `vendor:publish --tag=jamesgifford-hold-views --force`) or hand-add the
+> blocks from the package copy — there is no automatic merge.
 
 **2. Change structure or channels — replace the notification class.** Point any
 entry under `notifications.classes` at your own subclass to take over `toMail()`
@@ -342,6 +355,8 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `notifications.send_signup_receipt` | `false` | Email each new signup a receipt. |
 | `notifications.auto_announce_on_up` | `false` | Auto-schedule the announcement when a hold ends. |
 | `notifications.announce_delay_minutes` | `10` | Change-of-mind delay before an auto-announce sends. |
+| `notifications.subject_launch` | `We're live!` | Subject of the launch announcement (body copy lives in the template). |
+| `notifications.subject_restored` | `We're back online` | Subject of the restore announcement (body copy lives in the template). |
 | `mail.from.address` / `mail.from.name` | `null` | From override (falls back to app defaults). |
 | `spam.rate_limit_per_minute` | `5` | Per-IP signup rate limit. |
 | `spam.honeypot_field` | `website` | Hidden honeypot field name. |
@@ -373,7 +388,9 @@ resources/views/vendor/hold/
 ├── prelaunch.blade.php
 ├── maintenance.blade.php
 └── mail/
-    └── announcement.blade.php
+    ├── announcement.blade.php
+    ├── team.blade.php
+    └── receipt.blade.php
 ```
 
 **How overriding works.** The package registers these under the `hold::` view
@@ -387,7 +404,7 @@ edit `maintenance.blade.php`, not the shim.)
 
 The prelaunch and maintenance pages are self-contained single Blade files with
 inline CSS and **no build step** — they render even when your app is half-broken.
-Each declares four CSS custom properties at the top for a three-line reskin:
+**Colors** are four CSS custom properties at the top for a three-line reskin:
 
 ```css
 :root {
@@ -398,10 +415,17 @@ Each declares four CSS custom properties at the top for a three-line reskin:
 }
 ```
 
-The announcement email template lives alongside them at
-`mail/announcement.blade.php` — see
+**Copy** is a `$copy` block beside them holding *every* user-visible string —
+title, heading, sub-text, the email field's label/placeholder, the button, the
+privacy note, and both form-state messages (the `success` line shown after a
+signup and the `invalid` line for a bad email). Both state messages live in the
+block so you can reword them in one place without triggering them; edit any line
+and it renders. Each page is self-contained, so the strings the two pages share
+are duplicated per file by design — there is no shared copy include.
+
+The email templates live alongside them under `mail/` — see
 [Customizing the announcement emails](#customizing-the-announcement-emails) for
-its palette and copy model.
+their palette, header/logo, and copy model.
 
 ## How maintenance integration works (container binding)
 
