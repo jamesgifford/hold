@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use JamesGifford\Hold\Contracts\HoldSignupContract;
 use JamesGifford\Hold\Database\Factories\HoldSignupFactory;
 use JamesGifford\Hold\HoldSignupContext;
 
@@ -39,8 +40,9 @@ use JamesGifford\Hold\HoldSignupContext;
  * @property Carbon $updated_at
  */
 #[Fillable(['email', 'context', 'requested_at', 'ip_address', 'user_agent'])]
-class HoldSignup extends Model
+class HoldSignup extends Model implements HoldSignupContract
 {
+    /** @use HasFactory<HoldSignupFactory> */
     use HasFactory;
 
     protected $table = 'hold_signups';
@@ -74,6 +76,9 @@ class HoldSignup extends Model
     /**
      * Addresses that have not yet been sent their announcement.
      */
+    /**
+     * @param  Builder<self>  $query
+     */
     #[Scope]
     protected function notNotified(Builder $query): void
     {
@@ -82,6 +87,9 @@ class HoldSignup extends Model
 
     /**
      * Addresses that are still subscribed (never unsubscribed).
+     */
+    /**
+     * @param  Builder<self>  $query
      */
     #[Scope]
     protected function subscribed(Builder $query): void
@@ -92,12 +100,18 @@ class HoldSignup extends Model
     /**
      * Restrict to a single capture context (prelaunch or maintenance).
      */
+    /**
+     * @param  Builder<self>  $query
+     */
     #[Scope]
     protected function context(Builder $query, HoldSignupContext|string $context): void
     {
         $query->where('context', $context instanceof HoldSignupContext ? $context->value : $context);
     }
 
+    /**
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [

@@ -22,4 +22,23 @@
             <directory>src</directory>
         </include>
     </source>
+    <!--
+        Connection defaults for the suite. PHPUnit's <env> does NOT overwrite a
+        variable that is already set in the environment, so these are defaults
+        only: CI (and any local override) wins without editing this file.
+
+        DB_SOCKET is declared empty on purpose. If it were merely absent, a
+        socket path inherited from the shell — or from a my.cnf — could leak into
+        the connection and silently override host/port, which fails in a
+        container where no such socket exists.
+    -->
+    <php>
+        <env name="DB_CONNECTION" value="mariadb"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_DATABASE" value="hold_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value="root"/>
+        <env name="DB_SOCKET" value=""/>
+    </php>
 </phpunit>

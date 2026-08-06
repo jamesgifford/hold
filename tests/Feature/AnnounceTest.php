@@ -9,6 +9,7 @@ use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
 use JamesGifford\Hold\Notifications\ServiceRestored;
 use JamesGifford\Hold\Tests\Support\Fixtures\CustomLaunchAnnouncement;
+use JamesGifford\Hold\Tests\Support\Fixtures\ExplodingLaunchAnnouncement;
 
 it('announces only to subscribed, unnotified signups of the given context', function () {
     Notification::fake();
@@ -114,4 +115,26 @@ it('command requires --context when both contexts have pending signups', functio
         ->expectsOutputToContain('Both contexts');
 
     Notification::assertNothingSent();
+});
+
+// --- Per-recipient failure path ---------------------------------------------
+
+it('records a failed send and completes the run instead of breaking in the error path', function () {
+    // The catch block logs the context alongside the signup id. If that logging
+    // itself misbehaves, a single bad recipient takes down the whole run — the
+    // one moment the package most needs to keep going.
+    Notification::fake();
+    config()->set(
+        'jamesgifford.hold.notifications.classes.launch_announcement',
+        ExplodingLaunchAnnouncement::class,
+    );
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $result = app(Announcer::class)->send(HoldSignupContext::Prelaunch);
+
+    expect($result->failed)->toBe(2)
+        ->and($result->sent)->toBe(0);
+
+    // Nothing was marked notified, so a later run can retry them.
+    expect(HoldSignup::whereNotNull('notified_at')->count())->toBe(0);
 });

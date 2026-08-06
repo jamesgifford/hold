@@ -7,6 +7,135 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-06
+
+> ### Upgrading from 1.0.0 — read this first
+>
+> This release contains **four breaking changes**. All four are compile-time or
+> boot-time failures with clear messages, not silent behaviour changes.
+>
+> 1. **`models.signup` must implement `JamesGifford\Hold\Contracts\HoldSignupContract`.**
+>    Re-publish the model (`php artisan jamesgifford:hold:setup`, accept the
+>    overwrite) or add `implements HoldSignupContract` and its `use` statement to
+>    your copy. A class that exists but does not implement it now throws a
+>    `RuntimeException` naming the fix, rather than being silently replaced by the
+>    package's own model.
+> 2. **`AnnouncementScheduler::scheduleIfAuto()` returns `ScheduleOutcome`, not `bool`.**
+>    Update any `if (...)` call site to match on the enum.
+> 3. **`HoldSignupCaptured::$signup` is typed `HoldSignupContract`, not `Model`.**
+>    Listeners type-hinting `Model` on that property need updating.
+> 4. **`PrelaunchMode::__construct()` takes a third argument** (`Illuminate\Contracts\View\Factory`).
+>    Only affects code constructing the middleware directly; container resolution
+>    is unaffected.
+>
+> Also review `notifications.announce_delay_minutes` if you use
+> `auto_announce_on_up`: on a `sync` queue, auto-announce now refuses to dispatch
+> rather than sending immediately. See "Changed" below.
+
+### Security
+
+- **Open redirect on the public signup endpoint.** The `?hold=` bounce-back took
+  its target from the `Referer` header and treated a same-host check as
+  sufficient. `parse_url()` reports a leading `//host` as the *path*, so a
+  crafted same-host referer produced a protocol-relative `Location` that left the
+  origin — reachable in practice because a prelaunch hold renders the signup form
+  at every path. The target is now allow-listed to a single-slash-rooted path;
+  `//host` and `/\host` both collapse to `/`.
+
+### Added
+
+- `JamesGifford\Hold\Contracts\HoldSignupContract` — the shape `models.signup`
+  must satisfy. The published model implements it (setup writes it in), which is
+  what lets the package resolve an app-owned class it has no static relationship
+  with.
+- `JamesGifford\Hold\Announcements\ScheduleOutcome` — enum reporting what an
+  auto-announce attempt actually did (`Scheduled`, `AutoAnnounceDisabled`,
+  `QueueCannotDelay`).
+- `AnnouncementScheduler::autoAnnounceEnabled()`, `::autoAnnounceIsUnusable()`
+  and `::queueCanDelay()`, so commands can report the queue situation without
+  re-deriving the scheduling decision.
+
+### Fixed
+
+- **A failing recipient aborted the entire announcement run.** The per-recipient
+  `catch` block in `Announcer::send()` referenced `$context`, which the closure
+  never captured, so the error path itself raised — one bad send took down the
+  run and left `notified_at` unstamped for everyone.
+- **`requested_at` is now `DATETIME`, not `TIMESTAMP`.** On a MySQL/MariaDB
+  server with `explicit_defaults_for_timestamp=0`, the table's first non-nullable
+  `TIMESTAMP` column is silently given `ON UPDATE CURRENT_TIMESTAMP`, which
+  rewrote `requested_at` every time `notified_at` was stamped.
+- **Auto-announce no longer fires without its change-of-mind window.**
+  `SyncQueue::later()` discards delays, so on a `sync` connection the delayed
+  announcement sent immediately while the command claimed it was scheduled. With
+  a delay configured and a queue that cannot defer, nothing is dispatched and the
+  operator is told to run `jamesgifford:hold:announce`. A zero delay still
+  dispatches.
+- **`uninstall` no longer drops the table when it cannot ask.** Run with `-n` /
+  `--no-interaction` and without `--force` it removed the published assets *and*
+  dropped `hold_signups`. Dropping is now an explicit `--force` opt-in; the assets
+  still go. `uninstall` also now asks the production-specific confirmation that
+  `setup` already asked.
+- **Notification classes degrade to the package defaults.** `mergeConfigFrom()`
+  merges only the top-level key, so a config published before a key existed left
+  `notifications.classes` undefined — which resolved to `''` and fatalled on
+  `new ''`. The fallback reads the shipped config file, so it cannot drift from
+  the documented defaults. An unknown key now throws `InvalidArgumentException`.
+- **`setup` renames the published model class again.** The rename matched
+  `extends Model` anchored to end-of-line, so the contract's `implements` clause
+  would have published a correctly-named *file* containing the wrong class name
+  whenever `models.signup` used a non-default basename.
+
+### Changed
+
+- Signup model access is centralised on `Hold::signups()`. The controller,
+  `UnsubscribeCommand` and the factory previously resolved the class themselves;
+  scattered resolution is how a config override half-wires itself.
+- `PrelaunchMode` renders through the injected view factory instead of the
+  `view()` helper.
+- `uninstall --force` now documents that it also drops the table.
+
+### Documentation
+
+- README and the Boost skill list every command and flag, including
+  `jamesgifford:hold:unsubscribe`, and both cover the sync-queue refusal, the
+  `-n` uninstall semantics and the model contract.
+- `config/hold.php` referenced a `class` key that never existed; it is `signup`.
+- The CHANGELOG's 1.0.0 entry claimed `enable`/`disable` were "production-guarded,
+  idempotent". Neither is production-guarded, and `enable` refuses rather than
+  no-ops. Corrected in place.
+
+### Testing & tooling
+
+*No runtime effect.*
+
+- The suite runs against **MariaDB** by default; `composer test:sqlite` keeps a
+  fast offline loop. Driver-specific assertions skip themselves. CI covers both,
+  plus a `--prefer-lowest` job.
+- PHPStan (Larastan) at **level 6 with no baseline**, wired into CI.
+- `composer check` runs every gate.
+- 11 drift guards that derive their expectations from source with empty
+  allowlists, covering command/flag documentation, config-key parity in both
+  directions, notification-key resolution, renamed identifiers and stub style.
+- `pest --parallel` is isolated per worker (own schema and own storage tree).
+  Correct, though not meaningfully faster at this suite size.
+- Dropped `minimum-stability: dev`, which was resolving dependencies onto dev
+  branches instead of stable security patches.
+- Connection defaults moved into `phpunit.xml`'s `<php>` block so CI overrides
+  them from the environment without editing the file. `DB_SOCKET` is declared
+  empty on purpose, so an inherited socket path cannot override host/port.
+- Test isolation is transaction-per-test (`RefreshDatabase`), verified sound on
+  MariaDB across random orderings and parallel workers. The base `TestCase`
+  also releases its database connections after `parent::tearDown()`, and
+  `composer test:parallel` prunes the per-worker schemas it creates.
+- `composer.json` gained `homepage` and `support` (issues + source) so the
+  package points somewhere from Packagist and `composer show`.
+- Added `SECURITY.md` (private vulnerability reporting) and `.editorconfig`;
+  both are `export-ignore`d from the dist tarball.
+- GitHub Actions bumped to `actions/checkout@v7` and `actions/cache@v6`;
+  Dependabot now uses `versioning-strategy: increase` so a major bump replaces
+  the constraint rather than widening it.
+
 ## [1.0.0] - 2026-07-14
 
 First stable release: reusable "coming soon" (prelaunch) and enhanced
@@ -25,7 +154,7 @@ launch/restore announcement notifications.
 - A published `resources/views/vendor/hold/maintenance.blade.php` capture page, with `resources/views/errors/503.blade.php` published as a two-line shim that `@include`s it.
 
 #### Unified enable/disable
-- `jamesgifford:hold:enable {prelaunch|maintenance}` and `jamesgifford:hold:disable`. **Only one hold may be active at a time**: `enable` refuses (naming the active mode) while any hold is up. Enabling `maintenance` invokes native `php artisan down` with a generated bypass secret and prints the secret link; `disable` runs `php artisan up` and/or clears the prelaunch flag, handling the both-active case by preferring the maintenance announcement context. Both commands are production-guarded, idempotent, and print an `Active hold: …` status line.
+- `jamesgifford:hold:enable {prelaunch|maintenance}` and `jamesgifford:hold:disable`. **Only one hold may be active at a time**: `enable` refuses (naming the active mode) while any hold is up. Enabling `maintenance` invokes native `php artisan down` with a generated bypass secret and prints the secret link; `disable` runs `php artisan up` and/or clears the prelaunch flag, handling the both-active case by preferring the maintenance announcement context. `disable` is idempotent (it reports cleanly when no hold is active); `enable` deliberately refuses rather than no-ops. Both print an `Active hold: …` status line. Neither is production-guarded — putting a live site into a hold is their job; `setup` and `uninstall` are the guarded commands.
 - Native-down self-heal: running `php artisan down` directly (e.g. from deploy tooling) while prelaunch is active auto-disables prelaunch, so the one-hold invariant holds.
 
 #### Signup capture
@@ -53,3 +182,7 @@ launch/restore announcement notifications.
 #### Configuration and tooling
 - Documented config covering routes, prelaunch, notifications (including announcement subjects), mail from-address override, spam protection, and model resolution / publish location.
 - A shipped Laravel Boost skill documenting the package's modes, commands, and customization surface.
+
+[Unreleased]: https://github.com/jamesgifford/hold/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/jamesgifford/hold/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/jamesgifford/hold/releases/tag/v1.0.0

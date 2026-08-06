@@ -12,6 +12,11 @@
         "waitlist"
     ],
     "license": "MIT",
+    "homepage": "https://github.com/jamesgifford/hold",
+    "support": {
+        "issues": "https://github.com/jamesgifford/hold/issues",
+        "source": "https://github.com/jamesgifford/hold"
+    },
     "authors": [
         {
             "name": "James Gifford",
@@ -26,10 +31,12 @@
         "illuminate/support": "^13.0"
     },
     "require-dev": {
-        "laravel/pint": "^1.13",
+        "larastan/larastan": "^3.10",
+        "laravel/pint": "^1.30",
         "mockery/mockery": "^1.6",
         "orchestra/testbench": "^11.0",
-        "pestphp/pest": "^3.0"
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-phpstan": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -42,9 +49,21 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/pest",
+        "check": [
+            "@format:check",
+            "@analyse",
+            "@test",
+            "@test:sqlite"
+        ],
         "format": "vendor/bin/pint",
-        "format:check": "vendor/bin/pint --test"
+        "format:check": "vendor/bin/pint --test",
+        "analyse": "vendor/bin/phpstan analyse --memory-limit=1G",
+        "test": "vendor/bin/pest",
+        "test:sqlite": "DB_CONNECTION=sqlite vendor/bin/pest",
+        "test:parallel": [
+            "vendor/bin/pest --parallel",
+            "@php tests/prune-worker-databases.php"
+        ]
     },
     "extra": {
         "laravel": {
@@ -53,12 +72,20 @@
             ]
         }
     },
-    "minimum-stability": "dev",
     "prefer-stable": true,
     "config": {
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
+    },
+    "scripts-descriptions": {
+        "check": "Every quality gate: Pint, PHPStan, and the suite on MariaDB and on SQLite.",
+        "format": "Apply code style fixes.",
+        "format:check": "Check code style without changing files.",
+        "analyse": "Static analysis (PHPStan level 6, no baseline).",
+        "test": "Run the suite against MariaDB (the deployment target).",
+        "test:sqlite": "Run the suite against SQLite for a quick offline check.",
+        "test:parallel": "Run the suite in parallel, then prune the per-worker schemas it created."
     }
 }

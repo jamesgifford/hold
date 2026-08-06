@@ -91,3 +91,58 @@ it('fires HoldSignupCaptured only for genuinely new rows', function () {
 
     Event::assertDispatchedTimes(HoldSignupCaptured::class, 1);
 });
+
+// --- Redirect target (open-redirect defence) --------------------------------
+//
+// The endpoint bounces the visitor back to the page they submitted from, taken
+// from the Referer header. Referer is attacker-influenced, and while a hold is
+// active the holding page renders at EVERY path — so a crafted same-host URL is
+// a reachable way to reach this code. The redirect must never leave the origin.
+
+it('never redirects off-site when the referer path begins with a double slash', function () {
+    // parse_url() reports host=localhost here — the path, not the host, carries
+    // the foreign origin. A "//host" Location is protocol-relative: the browser
+    // treats it as an absolute URL and leaves the site.
+    $response = $this->withHeaders(['referer' => 'http://localhost//evil.example.com'])
+        ->post('hold/signup', ['email' => 'redirect1@example.com', 'context' => 'prelaunch']);
+
+    $response->assertRedirect();
+    $location = (string) $response->headers->get('location');
+
+    expect($location)->not->toStartWith('//')
+        ->and($location)->not->toContain('evil.example.com');
+});
+
+it('never redirects off-site when the referer path begins with a slash-backslash', function () {
+    // Browsers normalise "/\" to "//" when resolving a URL, so it is the same
+    // attack with one character changed.
+    $response = $this->withHeaders(['referer' => 'http://localhost/\evil.example.com'])
+        ->post('hold/signup', ['email' => 'redirect2@example.com', 'context' => 'prelaunch']);
+
+    $response->assertRedirect();
+    $location = (string) $response->headers->get('location');
+
+    expect($location)->not->toContain('evil.example.com')
+        ->and($location)->not->toStartWith('/\\')
+        ->and($location)->not->toStartWith('//');
+});
+
+it('still returns the visitor to an ordinary same-host path', function () {
+    $response = $this->withHeaders(['referer' => 'http://localhost/coming-soon'])
+        ->post('hold/signup', ['email' => 'redirect3@example.com', 'context' => 'prelaunch']);
+
+    $response->assertRedirect();
+    expect((string) $response->headers->get('location'))
+        ->toContain('/coming-soon')
+        ->toContain('hold=subscribed');
+});
+
+it('falls back to the site root for a cross-host referer', function () {
+    $response = $this->withHeaders(['referer' => 'http://evil.example.com/lure'])
+        ->post('hold/signup', ['email' => 'redirect4@example.com', 'context' => 'prelaunch']);
+
+    $response->assertRedirect();
+    expect((string) $response->headers->get('location'))
+        ->not->toContain('evil.example.com')
+        ->toContain('hold=subscribed');
+});

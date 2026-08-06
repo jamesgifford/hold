@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
+use Illuminate\View\FileViewFinder;
 
 beforeEach(function () {
     // The base TestCase pre-migrates the support schema; drop it so a setup
@@ -65,7 +66,13 @@ it('publishes a 503 view that renders compiled Blade (no literal template syntax
 
     // Resolve the published shim through the real view finder (prepend so the
     // app's published copy wins over any framework default) and render it.
-    View::getFinder()->prependLocation($this->appRoot.'/resources/views');
+    $finder = View::getFinder();
+
+    // prependLocation() lives on the concrete finder the framework binds, not on
+    // ViewFinderInterface — assert that binding rather than assume it.
+    expect($finder)->toBeInstanceOf(FileViewFinder::class);
+    /** @var FileViewFinder $finder */
+    $finder->prependLocation($this->appRoot.'/resources/views');
     View::flushFinderCache();
     $html = view('errors.503')->render();
 
@@ -128,4 +135,66 @@ it('is idempotent: a re-run adds no second migration and keeps the config', func
     expect($migrations)->toHaveCount(1);
 
     expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toContain('edited-by-user');
+});
+
+// --- The published model must satisfy the contract --------------------------
+
+it('publishes a model that still implements the contract the package resolves', function () {
+    // The package resolves models.signup through HoldSignupContract, and the
+    // published copy is a rewritten file rather than a subclass — so if the
+    // rewrite ever drops the interface, resolution fails at runtime.
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])->assertSuccessful();
+
+    $published = File::get($this->appRoot.'/app/Models/HoldSignup.php');
+
+    expect($published)->toContain('namespace App\Models;')
+        ->toContain('use JamesGifford\Hold\Contracts\HoldSignupContract;')
+        ->toContain('class HoldSignup extends Model implements HoldSignupContract');
+});
+
+it('renames the published class when a different model basename is configured', function () {
+    // Pre-publish an edited config, since setup re-reads the published file and
+    // would otherwise discard a runtime config() override.
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', str_replace(
+        "'signup' => 'App\\\\Models\\\\HoldSignup'",
+        "'signup' => 'App\\\\Models\\\\Waitlist'",
+        File::get(dirname(__DIR__, 2).'/config/hold.php'),
+    ));
+
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])->assertSuccessful();
+
+    $published = File::get($this->appRoot.'/app/Models/Waitlist.php');
+
+    expect($published)->toContain('class Waitlist extends Model implements HoldSignupContract')
+        ->not->toContain('class HoldSignup extends');
+});
+
+// --- Interactive paths ------------------------------------------------------
+//
+// Every other test here passes --force, which skips every prompt. These drive the
+// prompts instead, so the interactive branches are exercised rather than assumed.
+
+it('pauses for review and offers the migration on an interactive run', function () {
+    $this->artisan('jamesgifford:hold:setup')
+        ->expectsOutputToContain('Review your configuration')
+        ->expectsQuestion('Press ENTER to continue', '')
+        ->expectsConfirmation('Run the database migration now?', 'no')
+        ->expectsOutputToContain('run `php artisan migrate` when you are ready')
+        ->assertSuccessful();
+
+    expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeTrue();
+});
+
+it('keeps an existing file when the overwrite prompt is declined', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', '<?php return []; // mine');
+
+    $this->artisan('jamesgifford:hold:setup')
+        ->expectsConfirmation('config/jamesgifford/hold.php already exists. Overwrite it?', 'no')
+        ->expectsQuestion('Press ENTER to continue', '')
+        ->expectsConfirmation('Run the database migration now?', 'no')
+        ->assertSuccessful();
+
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toContain('// mine');
 });

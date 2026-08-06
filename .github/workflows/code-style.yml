@@ -1,4 +1,4 @@
-name: Code Style
+name: Static Analysis & Code Style
 
 on:
     push:
@@ -7,13 +7,13 @@ on:
         branches: [main]
 
 jobs:
-    pint:
+    quality:
         runs-on: ubuntu-latest
-        name: Laravel Pint
+        name: Pint & PHPStan
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -25,4 +25,8 @@ jobs:
               run: composer install --prefer-dist --no-interaction --no-progress
 
             - name: Check code style
-              run: vendor/bin/pint --test
+              run: composer format:check
+
+            # Level 6, no baseline — see phpstan.neon.
+            - name: Static analysis
+              run: composer analyse

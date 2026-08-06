@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - src
+        - database
+        - config
+        - routes
+        - tests
+
+    # Deliberately NO baseline file. A baseline records today's findings as
+    # permanently acceptable, which is how a "passing" analyser ends up proving
+    # nothing. Findings get fixed; the few that cannot be are suppressed inline
+    # with a comment saying why.

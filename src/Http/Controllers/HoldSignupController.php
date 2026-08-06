@@ -72,12 +72,10 @@ final class HoldSignupController
     {
         $email = Str::lower(trim((string) $request->input('email')));
         $context = $this->resolveContext($request, $state);
-        $model = Hold::signupModel();
-
-        $existing = $model::query()->where('email', $email)->first();
+        $existing = Hold::signups()->where('email', $email)->first();
 
         if ($existing === null) {
-            $signup = $model::query()->create([
+            $signup = Hold::signups()->create([
                 'email' => $email,
                 'context' => $context,
                 'requested_at' => Carbon::now(),
@@ -133,23 +131,54 @@ final class HoldSignupController
 
     /**
      * Redirect back to the page the form was submitted from, carrying the
-     * outcome as a `?hold=` query param. The target is reduced to a same-origin
-     * path so a spoofed Referer can't turn this into an open redirect.
+     * outcome as a `?hold=` query param.
      */
     private function back(Request $request, string $status): RedirectResponse
     {
+        return redirect()->to($this->refererPath($request).'?hold='.$status);
+    }
+
+    /**
+     * The same-origin path the form was submitted from, or '/' when the Referer
+     * is absent, cross-host, or not a plain rooted path.
+     *
+     * Referer is attacker-influenced and, while a hold is active, the holding
+     * page renders at EVERY path — so a crafted same-host URL is a reachable way
+     * to reach this code. The result is therefore allow-listed, not sanitised:
+     * anything that is not a single-slash-rooted path collapses to the root.
+     */
+    private function refererPath(Request $request): string
+    {
         $referer = (string) $request->headers->get('referer', '');
-        $path = '/';
 
-        if ($referer !== '') {
-            $parts = parse_url($referer);
-            $sameHost = ! isset($parts['host']) || $parts['host'] === $request->getHost();
-
-            if ($sameHost && isset($parts['path']) && $parts['path'] !== '') {
-                $path = $parts['path'];
-            }
+        if ($referer === '') {
+            return '/';
         }
 
-        return redirect()->to($path.'?hold='.$status);
+        $parts = parse_url($referer);
+
+        if ($parts === false) {
+            return '/';
+        }
+
+        if (isset($parts['host']) && $parts['host'] !== $request->getHost()) {
+            return '/';
+        }
+
+        $path = (string) ($parts['path'] ?? '');
+
+        if (! str_starts_with($path, '/')) {
+            return '/';
+        }
+
+        // parse_url() reports a leading '//host' as the PATH, not the host, so
+        // the same-host check above passes for it. Both '//host' and '/\host'
+        // are resolved by browsers as absolute URLs to another origin, and
+        // Laravel's UrlGenerator::to() passes a leading '//' straight through.
+        if (str_starts_with($path, '//') || str_starts_with($path, '/\\')) {
+            return '/';
+        }
+
+        return $path;
     }
 }

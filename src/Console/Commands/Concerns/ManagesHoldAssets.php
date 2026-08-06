@@ -103,8 +103,11 @@ trait ManagesHoldAssets
             1,
         ) ?? $contents;
 
+        // \b rather than $: the declaration carries an `implements` clause, and
+        // anchoring to end-of-line would silently skip the rename (publishing a
+        // correctly-named FILE containing the wrong class name).
         return preg_replace(
-            '/^class\s+HoldSignup\s+extends\s+Model$/m',
+            '/^class\s+HoldSignup\s+extends\s+Model\b/m',
             'class '.$this->modelClassName().' extends Model',
             $contents,
             1,

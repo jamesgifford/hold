@@ -41,7 +41,7 @@ use JamesGifford\Hold\Listeners\SendTeamHoldNotice;
  *  - Load + namespace the package views, and register publishable assets
  *  - Push the PrelaunchMode global middleware (a no-op unless a hold is active)
  *  - Register the package routes (when routes.register is true)
- *  - Register the five `jamesgifford:hold:*` console commands
+ *  - Register the six `jamesgifford:hold:*` console commands
  */
 class HoldServiceProvider extends ServiceProvider
 {

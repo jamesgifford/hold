@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
-use JamesGifford\Hold\Http\Controllers\PreviewController;
 use JamesGifford\Hold\Http\Controllers\HoldSignupController;
+use JamesGifford\Hold\Http\Controllers\PreviewController;
 
 /*
  * Hold package routes — self-hosted copy.

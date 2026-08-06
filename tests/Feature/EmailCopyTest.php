@@ -23,10 +23,13 @@ function renderMailBody(object $notification): string
 {
     $mail = $notification->toMail(new AnonymousNotifiable);
 
-    return view($mail->view, $mail->viewData)->render();
+    return holdRender($mail->view, $mail->viewData);
 }
 
 /** Publish an edited copy of a package mail template as the winning override. */
+/**
+ * @param  array<string, string>  $edits
+ */
 function publishEditedMail(string $template, array $edits): void
 {
     $source = File::get(dirname(__DIR__, 2)."/resources/views/mail/{$template}.blade.php");

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace JamesGifford\Hold\Http\Middleware;
 
 use Closure;
+use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Http\Request;
 use JamesGifford\Hold\HoldState;
 use JamesGifford\Hold\Http\BypassCookie;
@@ -29,6 +30,7 @@ final class PrelaunchMode
     public function __construct(
         private readonly HoldState $state,
         private readonly BypassCookie $bypass,
+        private readonly ViewFactory $views,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -41,8 +43,11 @@ final class PrelaunchMode
             return $next($request);
         }
 
+        // Resolved through the factory rather than the view() helper: the
+        // package's views live under a namespace the helper's view-string type
+        // cannot verify, and the factory takes a plain string.
         return response(
-            view('hold::prelaunch')->render(),
+            $this->views->make('hold::prelaunch')->render(),
             $this->statusCode(),
             ['Content-Type' => 'text/html; charset=UTF-8'],
         );

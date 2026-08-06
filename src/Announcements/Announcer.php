@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace JamesGifford\Hold\Announcements;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use JamesGifford\Hold\Hold;
 use JamesGifford\Hold\HoldSignupContext;
+use JamesGifford\Hold\Models\HoldSignup;
 use Throwable;
 
 /**
@@ -47,7 +49,7 @@ final class Announcer
         $sent = 0;
         $failed = 0;
 
-        $this->targets($context)->chunkById(200, function ($signups) use ($class, &$sent, &$failed): void {
+        $this->targets($context)->chunkById(200, function ($signups) use ($class, $context, &$sent, &$failed): void {
             foreach ($signups as $signup) {
                 try {
                     Notification::route('mail', $signup->email)->notify(new $class($signup));
@@ -75,8 +77,10 @@ final class Announcer
 
     /**
      * Subscribed, not-yet-notified signups for the given context.
+     *
+     * @return Builder<HoldSignup>
      */
-    private function targets(HoldSignupContext $context)
+    private function targets(HoldSignupContext $context): Builder
     {
         return Hold::signups()
             ->subscribed()

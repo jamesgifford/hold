@@ -17,10 +17,13 @@ function renderPage(string $view, ?string $status): string
 {
     request()->merge(['hold' => $status]);
 
-    return view($view)->render();
+    return holdRender($view);
 }
 
 /** Publish an edited copy of a package page template as the winning override. */
+/**
+ * @param  array<string, string>  $edits
+ */
 function publishEditedPage(string $view, array $edits): void
 {
     $source = File::get(dirname(__DIR__, 2)."/resources/views/{$view}.blade.php");

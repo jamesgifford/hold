@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Testing\TestResponse;
 use JamesGifford\Hold\HoldState;
+use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
     Route::middleware('web')->get('/', fn () => 'REAL APP HOMEPAGE');
@@ -16,8 +18,10 @@ afterEach(function () {
 
 /**
  * Grab the encrypted bypass cookie a preview response sets, for later replay.
+ *
+ * @param  TestResponse<Response>  $response
  */
-function bypassCookieValue($response): ?string
+function bypassCookieValue(TestResponse $response): ?string
 {
     $name = config('jamesgifford.hold.prelaunch.bypass_cookie_name');
     $cookie = collect($response->headers->getCookies())

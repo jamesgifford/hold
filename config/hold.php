@@ -93,6 +93,12 @@ return [
         // Delay, in minutes, before an auto-dispatched announcement actually
         // sends. This is the "change of mind" window: if the mode is re-enabled
         // within it, the delayed job aborts silently without emailing anyone.
+        //
+        // The window needs a queue that can defer work. Laravel's `sync`
+        // connection runs jobs inline and discards the delay, so when this is
+        // above zero and the default connection is sync, auto-announce REFUSES
+        // to dispatch and tells you to run jamesgifford:hold:announce yourself.
+        // Set this to 0 if an immediate send on a sync queue is what you want.
         'announce_delay_minutes' => 10,
 
         // Subject lines for the two announcements. The body copy lives in the
@@ -155,7 +161,12 @@ return [
     | The HoldSignup model is PUBLISHED into the host app (the app owns it). These
     | values tell the package where it lives and which class to resolve, so the
     | setup command can publish it to the right place and the runtime can find
-    | it. Point `class` at your own subclass to customize behavior.
+    | it. Point `signup` at your own subclass to customize behavior.
+    |
+    | Whatever `signup` names must implement
+    | JamesGifford\Hold\Contracts\HoldSignupContract — the published model does,
+    | and so does any subclass of it. A class that exists but does not implement
+    | it raises an exception rather than being silently replaced.
     |
     */
 

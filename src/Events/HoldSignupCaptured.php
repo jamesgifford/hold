@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace JamesGifford\Hold\Events;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Events\Dispatchable;
+use JamesGifford\Hold\Contracts\HoldSignupContract;
 
 /**
  * Fired when a signup row is armed for the current hold — a genuinely new row or
@@ -17,5 +17,5 @@ final class HoldSignupCaptured
 {
     use Dispatchable;
 
-    public function __construct(public readonly Model $signup) {}
+    public function __construct(public readonly HoldSignupContract $signup) {}
 }

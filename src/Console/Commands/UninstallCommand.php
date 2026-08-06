@@ -24,7 +24,7 @@ final class UninstallCommand extends Command
     use ManagesHoldAssets;
 
     protected $signature = 'jamesgifford:hold:uninstall
-        {--force : Run unattended: skip confirmations and permit running in production}
+        {--force : Run unattended: skip confirmations, DROP the table, and permit running in production}
         {--keep-data : Keep the hold_signups table and its migration file (skip the drop)}';
 
     protected $description = 'Remove everything Hold published and drop its table.';
@@ -91,24 +91,35 @@ final class UninstallCommand extends Command
             $this->line('  • the published migration file');
             $this->newLine();
             $this->warn('It will also DROP the hold_signups table — permanently deleting captured signups.');
+            $this->line('  (confirmed separately below; --force drops without asking, --keep-data never drops)');
         }
         $this->newLine();
     }
 
     protected function confirmUninstall(): bool
     {
+        if ($this->option('force')) {
+            return true;
+        }
+
         $isProduction = $this->laravel->environment() === 'production';
 
-        if ($isProduction && ! $this->option('force')) {
-            if (! $this->input->isInteractive()) {
+        if (! $this->input->isInteractive()) {
+            if ($isProduction) {
                 $this->error('Refusing to uninstall in production without --force.');
 
                 return false;
             }
+
+            // There is nobody to confirm against, so the published assets are
+            // removed but the data is not — see shouldDropTable().
+            return true;
         }
 
-        if ($this->option('force') || ! $this->input->isInteractive()) {
-            return true;
+        if ($isProduction && ! $this->confirm('This app appears to be in production. Uninstall Hold here?', false)) {
+            $this->warn('Uninstall aborted.');
+
+            return false;
         }
 
         if (! $this->confirm('Proceed with the uninstall described above?', false)) {
@@ -133,9 +144,9 @@ final class UninstallCommand extends Command
             return;
         }
 
+        // shouldDropTable() explains any refusal itself, so the two reasons for
+        // keeping the data (declined vs. unconfirmable) stay distinguishable.
         if (! $this->shouldDropTable()) {
-            $this->line('  - kept the '.PackageMigration::TABLE.' table and migration file (drop declined)');
-
             return;
         }
 
@@ -151,11 +162,28 @@ final class UninstallCommand extends Command
 
     protected function shouldDropTable(): bool
     {
-        if ($this->option('force') || ! $this->input->isInteractive()) {
+        if ($this->option('force')) {
             return true;
         }
 
-        return $this->confirm('Drop the '.PackageMigration::TABLE.' table now? This permanently deletes all captured signups.', false);
+        // `artisan ... -n` is the standard CI/deploy invocation and the one
+        // state where this question cannot be asked. Treating "cannot ask" as
+        // consent would silently delete every captured signup, so the drop
+        // becomes an explicit opt-in instead.
+        if (! $this->input->isInteractive()) {
+            $this->warn('  - kept the '.PackageMigration::TABLE.' table: a destructive drop needs a confirmation this run cannot ask for.');
+            $this->line('    Re-run with --force to drop it, or --keep-data to skip the drop deliberately.');
+
+            return false;
+        }
+
+        if ($this->confirm('Drop the '.PackageMigration::TABLE.' table now? This permanently deletes all captured signups.', false)) {
+            return true;
+        }
+
+        $this->line('  - kept the '.PackageMigration::TABLE.' table and migration file (drop declined)');
+
+        return false;
     }
 
     protected function removeStorage(HoldState $state): void

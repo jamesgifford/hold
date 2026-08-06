@@ -75,12 +75,21 @@ user-facing unsubscribe (no route, no link). Set/clear it via `HoldSignup::unsub
   the secret link). Refuses if a hold is already active — no override; disable first.
 - `jamesgifford:hold:disable` — deactivate whichever hold is active (prelaunch and/or
   maintenance); may auto-schedule the launch/restore announcement (see config).
+  On a `sync` queue with a non-zero delay it REFUSES to schedule and says so —
+  the change-of-mind window cannot exist there.
 - `jamesgifford:hold:announce` — email the launch/restore announcement now.
   Idempotent (stamps `notified_at`, never double-sends). Flags: `--context=prelaunch|maintenance`
   (inferred when one context has pending signups), `--dry-run` (report counts,
   send nothing).
 - `jamesgifford:hold:uninstall` — remove everything published and drop the table.
-  Flag: `--keep-data` (keep the table + migration). Finish with `composer remove`.
+  Flags: `--force` (unattended; also required to drop the table when the run
+  cannot ask for confirmation, e.g. `-n`), `--keep-data` (keep the table +
+  migration). Finish with `composer remove`. Run with `-n` and without `--force`
+  it removes the published assets but KEEPS the table — dropping data is always
+  an explicit opt-in.
+- `jamesgifford:hold:unsubscribe {email}` — operator tool to set a signup's
+  unsubscribe state. Flag: `--resubscribe` (clear it instead). This and the model
+  methods are the ONLY ways to change `unsubscribed_at`.
 
 ## Configuration
 
@@ -91,7 +100,9 @@ Published to `config/jamesgifford/hold.php`:
 - `prelaunch.status_code` (200/503), `prelaunch.bypass_cookie_name` / `..._lifetime_days`.
 - `notifications.team_addresses` (empty = no team notice), `notifications.send_signup_receipt`,
   `notifications.auto_announce_on_up`, `notifications.announce_delay_minutes` (the
-  change-of-mind delay before an auto-announce sends).
+  change-of-mind delay before an auto-announce sends). Auto-announce needs a queue
+  that can defer AND a running worker; on `sync` it refuses rather than sending
+  immediately. Set the delay to 0 to opt into an immediate send.
 - `notifications.subject_launch` / `notifications.subject_restored` — the two
   announcement subject lines (body copy lives in the email templates).
 - `spam.rate_limit_per_minute`, `spam.honeypot_field`.
@@ -101,6 +112,8 @@ Published to `config/jamesgifford/hold.php`:
 - **Model**: `setup` publishes `App\Models\HoldSignup` (resolved via
   `config('jamesgifford.hold.models.signup')`). Edit the published file — do NOT
   edit the package base model in `vendor/`. Point the config at a subclass to swap it.
+  Whatever it points at MUST implement `JamesGifford\Hold\Contracts\HoldSignupContract`
+  (the published model already does); a class that does not raises an exception.
 - **Holding pages**: edit the published `vendor/hold/prelaunch.blade.php` /
   `vendor/hold/maintenance.blade.php` — color via the four `--hold-*` CSS custom
   properties, and every user-visible string (incl. the `?hold=` success/error
@@ -124,6 +137,10 @@ Published to `config/jamesgifford/hold.php`:
   route is CSRF-exempt and feedback is the `?hold=` query param.
 - Do NOT toggle prelaunch mode by writing the flag file — use `jamesgifford:hold:enable prelaunch` / `disable`.
 - Do NOT try to run both holds at once — `enable` refuses while one is active; running native `down` while prelaunch is up auto-disables prelaunch.
-- Do NOT delete signup rows to unsubscribe — it's a soft state; use `Signup::unsubscribe()`/`resubscribe()` or `jamesgifford:hold:unsubscribe`.
+- Do NOT delete signup rows to unsubscribe — it's a soft state; use `HoldSignup::unsubscribe()`/`resubscribe()` or `jamesgifford:hold:unsubscribe`.
 - Do NOT build a user-facing unsubscribe from the package — it ships none; the app owns that decision. The package never sets/clears `unsubscribed_at` on its own.
 - Do NOT hardcode the route prefix — read `config('jamesgifford.hold.routes.prefix')`.
+- Do NOT assume `auto_announce_on_up` works on a `sync` queue — it deliberately
+  refuses there, because the delay (and so the change-of-mind window) is discarded.
+- Do NOT point `models.signup` at a class that does not implement
+  `HoldSignupContract` — resolution throws rather than falling back silently.

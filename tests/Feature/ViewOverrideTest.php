@@ -45,16 +45,16 @@ afterEach(function () {
 
 it('renders all three views from the package when no copy is published', function () {
     // No vendor/hold hint registered, so the finder falls back to the package.
-    expect(view('hold::prelaunch')->render())
+    expect(holdRender('hold::prelaunch'))
         ->toContain('launching soon')
         ->toContain('--hold-accent');
 
-    expect(view('hold::maintenance')->render())
+    expect(holdRender('hold::maintenance'))
         ->toContain('right back')
         ->toContain('value="maintenance"');
 
     // The announcement copy is context-keyed in the template's $copy block.
-    expect(view('hold::mail.announcement', ['context' => 'prelaunch'])->render())
+    expect(holdRender('hold::mail.announcement', ['context' => 'prelaunch']))
         ->toContain('<!-- hold:announcement -->')
         ->toContain('launched!');
 });
@@ -73,11 +73,11 @@ it('renders the published, edited copy in preference to the package default', fu
     File::put($vendorHold.'/mail/announcement.blade.php', 'EDITED-ANNOUNCEMENT-COPY :: {{ $heading }}');
     View::flushFinderCache();
 
-    expect(view('hold::prelaunch')->render())
+    expect(holdRender('hold::prelaunch'))
         ->toContain('EDITED-PRELAUNCH-COPY')
         ->not->toContain('launching soon');   // the package default no longer wins
 
-    expect(view('hold::mail.announcement', ['heading' => 'Launched'])->render())
+    expect(holdRender('hold::mail.announcement', ['heading' => 'Launched']))
         ->toContain('EDITED-ANNOUNCEMENT-COPY')
         ->toContain('Launched')                       // passed data still interpolates
         ->not->toContain('<!-- hold:announcement -->');
@@ -95,14 +95,14 @@ it('falls back to the package copy when a published file is deleted', function (
     $vendorHold = activatePublishedViews($root);
     File::put($vendorHold.'/prelaunch.blade.php', 'EDITED-PRELAUNCH-COPY');
     View::flushFinderCache();
-    expect(view('hold::prelaunch')->render())->toContain('EDITED-PRELAUNCH-COPY');
+    expect(holdRender('hold::prelaunch'))->toContain('EDITED-PRELAUNCH-COPY');
 
     // Remove the published override; the finder must fall back to the package
     // copy without error (the namespace hint dir still exists but has no file).
     File::delete($vendorHold.'/prelaunch.blade.php');
     View::flushFinderCache();
 
-    expect(view('hold::prelaunch')->render())
+    expect(holdRender('hold::prelaunch'))
         ->toContain('launching soon')
         ->not->toContain('EDITED-PRELAUNCH-COPY');
 

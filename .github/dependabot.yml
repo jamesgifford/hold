@@ -2,6 +2,10 @@ version: 2
 updates:
     - package-ecosystem: composer
       directory: /
+      # Replace the constraint rather than widening it. Without this, a major
+      # bump arrives as "^3.0 || ^4.0", which silently keeps the old major
+      # supported and lets a stale PR merge cleanly into a moved-on manifest.
+      versioning-strategy: increase
       schedule:
           interval: weekly
           day: monday

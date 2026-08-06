@@ -42,6 +42,25 @@ it('round-trips: setup then uninstall returns the app to a clean state', functio
     expect(Schema::hasTable('hold_signups'))->toBeFalse();
 });
 
+it('keeps the data when run with --no-interaction and without --force', function () {
+    // `artisan ... -n` is the standard CI/deploy invocation, and it is the one
+    // input state where the drop confirmation can never be answered. Treating
+    // "cannot ask" as consent would silently delete every captured signup, so
+    // dropping has to be an explicit opt-in via --force.
+    expect(Schema::hasTable('hold_signups'))->toBeTrue();
+
+    $this->artisan('jamesgifford:hold:uninstall', ['--no-interaction' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('--force');
+
+    // Published assets still go; the data does not.
+    expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()
+        ->and(File::exists($this->appRoot.'/app/Models/HoldSignup.php'))->toBeFalse();
+
+    expect(Schema::hasTable('hold_signups'))->toBeTrue()
+        ->and(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1);
+});
+
 it('keeps the table and migration file with --keep-data', function () {
     $this->artisan('jamesgifford:hold:uninstall', ['--force' => true, '--keep-data' => true])
         ->assertSuccessful();
@@ -53,4 +72,30 @@ it('keeps the table and migration file with --keep-data', function () {
     // Non-data assets still removed.
     expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/app/Models/HoldSignup.php'))->toBeFalse();
+});
+
+// --- Interactive paths ------------------------------------------------------
+
+it('aborts without touching anything when the uninstall prompt is declined', function () {
+    $this->artisan('jamesgifford:hold:uninstall')
+        ->expectsConfirmation('Proceed with the uninstall described above?', 'no')
+        ->expectsOutputToContain('Uninstall aborted.')
+        ->assertFailed();
+
+    expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeTrue()
+        ->and(Schema::hasTable('hold_signups'))->toBeTrue();
+});
+
+it('removes the assets but keeps the data when the drop prompt is declined', function () {
+    $this->artisan('jamesgifford:hold:uninstall')
+        ->expectsConfirmation('Proceed with the uninstall described above?', 'yes')
+        ->expectsConfirmation(
+            'Drop the hold_signups table now? This permanently deletes all captured signups.',
+            'no',
+        )
+        ->expectsOutputToContain('drop declined')
+        ->assertSuccessful();
+
+    expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()
+        ->and(Schema::hasTable('hold_signups'))->toBeTrue();
 });

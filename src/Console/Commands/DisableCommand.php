@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace JamesGifford\Hold\Console\Commands;
 
 use Illuminate\Console\Command;
+use JamesGifford\Hold\Announcements\ScheduleOutcome;
 use JamesGifford\Hold\Console\Commands\Concerns\InteractsWithHoldModes;
 use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
@@ -75,6 +76,12 @@ final class DisableCommand extends Command
 
         $this->info('Maintenance mode disabled (Laravel `up`). The app is live again.');
 
+        // The listener already ran and, on a queue that discards delays, chose
+        // not to dispatch — a decision that would otherwise only reach the logs.
+        if (AnnouncementScheduler::autoAnnounceIsUnusable()) {
+            $this->reportQueueCannotDelay();
+        }
+
         return true;
     }
 
@@ -87,15 +94,28 @@ final class DisableCommand extends Command
             return;
         }
 
-        if (AnnouncementScheduler::scheduleIfAuto(HoldSignupContext::Prelaunch)) {
-            $this->line(sprintf(
+        match (AnnouncementScheduler::scheduleIfAuto(HoldSignupContext::Prelaunch)) {
+            ScheduleOutcome::Scheduled => $this->line(sprintf(
                 'Launch announcement scheduled to prelaunch signups in %d minute(s). Re-enabling within that window cancels it.',
                 AnnouncementScheduler::delayMinutes(),
-            ));
+            )),
+            ScheduleOutcome::QueueCannotDelay => $this->reportQueueCannotDelay(),
+            ScheduleOutcome::AutoAnnounceDisabled => $this->line('Run `php artisan jamesgifford:hold:announce` when you want to email your signups.'),
+        };
+    }
 
-            return;
-        }
-
-        $this->line('Run `php artisan jamesgifford:hold:announce` when you want to email your signups.');
+    /**
+     * Auto-announce is configured but cannot honour its delay here. Say so
+     * plainly rather than let the operator believe a change-of-mind window
+     * exists — nothing has been dispatched.
+     */
+    private function reportQueueCannotDelay(): void
+    {
+        $this->warn(sprintf(
+            'Auto-announce is on, but the "%s" queue connection cannot delay jobs — the %d-minute change-of-mind window would be zero.',
+            (string) config('queue.default'),
+            AnnouncementScheduler::delayMinutes(),
+        ));
+        $this->line('Nothing was sent. Run `php artisan jamesgifford:hold:announce` when you are ready.');
     }
 }

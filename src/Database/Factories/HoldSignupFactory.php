@@ -21,7 +21,7 @@ class HoldSignupFactory extends Factory
      */
     public function modelName(): string
     {
-        return Hold::signupModel();
+        return Hold::signups()->getModel()::class;
     }
 
     public function definition(): array

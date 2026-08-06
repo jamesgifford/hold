@@ -13,6 +13,7 @@ use JamesGifford\Hold\HoldState;
 use JamesGifford\Hold\Jobs\SendAnnouncement;
 use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
+use JamesGifford\Hold\Notifications\LaunchAnnouncement;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
 
 afterEach(function () {
@@ -91,6 +92,74 @@ it('schedules the prelaunch announcement on disable when auto-announce is on', f
     );
 });
 
+// --- Auto-announce vs. a queue that cannot delay ---------------------------
+//
+// Illuminate\Queue\SyncQueue::later() forwards straight to push(), discarding
+// the delay. On a sync connection the change-of-mind window would silently be
+// zero and the announcement would go out — irrevocably — the instant the hold
+// ends. Refuse to dispatch instead, and say so.
+
+it('refuses to auto-announce when the default queue connection cannot delay', function () {
+    Queue::fake();
+    config()->set('queue.default', 'sync');
+    config()->set('jamesgifford.hold.notifications.auto_announce_on_up', true);
+    config()->set('jamesgifford.hold.notifications.announce_delay_minutes', 10);
+    app(HoldState::class)->enable();
+
+    $this->artisan('jamesgifford:hold:disable')->assertSuccessful();
+
+    Queue::assertNothingPushed();
+});
+
+it('tells the operator rather than claiming a window it cannot honour', function () {
+    Queue::fake();
+    config()->set('queue.default', 'sync');
+    config()->set('jamesgifford.hold.notifications.auto_announce_on_up', true);
+    config()->set('jamesgifford.hold.notifications.announce_delay_minutes', 10);
+    app(HoldState::class)->enable();
+
+    $this->artisan('jamesgifford:hold:disable')
+        ->assertSuccessful()
+        ->doesntExpectOutputToContain('Launch announcement scheduled')
+        ->expectsOutputToContain('cannot delay jobs')
+        ->expectsOutputToContain('jamesgifford:hold:announce');
+});
+
+it('refuses on the native up path too, not just the disable command', function () {
+    Queue::fake();
+    config()->set('queue.default', 'sync');
+    config()->set('jamesgifford.hold.notifications.auto_announce_on_up', true);
+    config()->set('jamesgifford.hold.notifications.announce_delay_minutes', 10);
+
+    event(new MaintenanceModeDisabled);
+
+    Queue::assertNothingPushed();
+});
+
+it('still auto-announces on a sync queue when the delay is zero', function () {
+    // A zero delay means there is no change-of-mind window by design, so a sync
+    // connection loses nothing and the dispatch should go ahead.
+    Queue::fake();
+    config()->set('queue.default', 'sync');
+    config()->set('jamesgifford.hold.notifications.auto_announce_on_up', true);
+    config()->set('jamesgifford.hold.notifications.announce_delay_minutes', 0);
+
+    event(new MaintenanceModeDisabled);
+
+    Queue::assertPushed(SendAnnouncement::class);
+});
+
+it('auto-announces normally on a connection that can delay', function () {
+    Queue::fake();
+    config()->set('queue.default', 'database');
+    config()->set('jamesgifford.hold.notifications.auto_announce_on_up', true);
+    config()->set('jamesgifford.hold.notifications.announce_delay_minutes', 10);
+
+    event(new MaintenanceModeDisabled);
+
+    Queue::assertPushed(SendAnnouncement::class);
+});
+
 // --- Delayed job change-of-mind guard --------------------------------------
 
 it('aborts the delayed job silently when the hold is active again', function () {
@@ -119,6 +188,46 @@ it('runs the delayed job when the hold is no longer active', function () {
 
     expect($result->skipped)->toBeFalse()
         ->and($result->sent)->toBe(2);
+});
+
+// --- Resilience to a config published before a key existed -----------------
+//
+// mergeConfigFrom() is a SHALLOW array_merge on the `jamesgifford.hold` key, so
+// an app's published config file replaces the package's whole `notifications`
+// array rather than merging into it. A config published before a key existed
+// therefore leaves that key undefined at runtime — which must degrade to the
+// package default, not to `new ''`.
+
+it('falls back to the package team notification when the config omits classes', function () {
+    Notification::fake();
+    config()->set('jamesgifford.hold.notifications.classes', null);
+    config()->set('jamesgifford.hold.notifications.team_addresses', ['team@example.com']);
+
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'prelaunch'])->assertSuccessful();
+
+    Notification::assertSentOnDemand(TeamHoldEnabled::class);
+});
+
+it('falls back to the package announcement when the config omits classes', function () {
+    Notification::fake();
+    config()->set('jamesgifford.hold.notifications.classes', null);
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $result = app(Announcer::class)->send(HoldSignupContext::Prelaunch);
+
+    expect($result->sent)->toBe(2)
+        ->and($result->failed)->toBe(0);
+    Notification::assertSentOnDemand(LaunchAnnouncement::class);
+});
+
+it('falls back to the package receipt when the config omits classes', function () {
+    Notification::fake();
+    config()->set('jamesgifford.hold.notifications.classes', null);
+    config()->set('jamesgifford.hold.notifications.send_signup_receipt', true);
+
+    $this->post('hold/signup', ['email' => 'stale@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemand(HoldSignupReceipt::class);
 });
 
 // --- Signup receipt --------------------------------------------------------

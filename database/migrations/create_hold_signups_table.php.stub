@@ -23,7 +23,12 @@ return new class extends Migration
 
             // When the user requested notification for the CURRENT hold. Reset
             // to now() each time the row is (re-)armed for a new hold.
-            $table->timestamp('requested_at');
+            //
+            // DATETIME, not TIMESTAMP, deliberately: on a MySQL/MariaDB server
+            // with explicit_defaults_for_timestamp=0 the first non-nullable
+            // TIMESTAMP column is silently given ON UPDATE CURRENT_TIMESTAMP,
+            // which would rewrite this value every time notified_at is stamped.
+            $table->datetime('requested_at');
 
             // Stamped when this address has been sent its announcement, so
             // re-running announce never double-sends.

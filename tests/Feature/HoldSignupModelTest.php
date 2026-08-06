@@ -9,8 +9,11 @@ use JamesGifford\Hold\Models\HoldSignup;
 it('casts context to the enum and timestamps to Carbon', function () {
     $signup = HoldSignup::factory()->prelaunch()->create();
 
+    // toDateTimeString() only exists on Carbon, so this proves the datetime
+    // cast at runtime without asserting a type the model already declares.
     expect($signup->refresh()->context)->toBe(HoldSignupContext::Prelaunch)
-        ->and($signup->created_at)->toBeInstanceOf(Carbon::class);
+        ->and($signup->refresh()->requested_at->toDateTimeString())
+        ->toBe($signup->requested_at->toDateTimeString());
 });
 
 it('scopes to not-yet-notified signups', function () {

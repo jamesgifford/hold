@@ -1,5 +1,9 @@
 # Hold
 
+[![Tests](https://github.com/jamesgifford/hold/actions/workflows/tests.yml/badge.svg)](https://github.com/jamesgifford/hold/actions/workflows/tests.yml)
+[![Static Analysis & Code Style](https://github.com/jamesgifford/hold/actions/workflows/code-style.yml/badge.svg)](https://github.com/jamesgifford/hold/actions/workflows/code-style.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Reusable **"coming soon" (pre-launch)** and **enhanced maintenance-mode** holding
 pages for Laravel, with email-capture signup and launch/restore announcement
 notifications.
@@ -23,8 +27,8 @@ Hold is the unified interface for both — one command pair (`enable {mode}` /
 `disable`), with only one mode ever active at a time.
 
 The package provides mechanism; your app owns orchestration. The migration and
-the `Signup` model are **published into your app** — you own them. Integration is
-container-only: nothing edits `bootstrap/app.php` or any other core file, so
+the `HoldSignup` model are **published into your app** — you own them. Integration
+is container-only: nothing edits `bootstrap/app.php` or any other core file, so
 `composer remove` fully reverses everything.
 
 ## Requirements
@@ -234,6 +238,17 @@ prelaunch (or bringing the app back `up`) dispatches the announcement after
 `announce_delay_minutes`. That delay is a change-of-mind window: if the same hold
 is active again when the job runs, it aborts silently and emails no one.
 
+> ⚠️ **Auto-announce needs a real queue.** Laravel's `sync` connection runs jobs
+> inline and throws the delay away, so the change-of-mind window would be zero
+> and the mass email would go out — unrecallably — the instant the hold ended.
+> When `announce_delay_minutes` is above zero and the default queue connection is
+> `sync`, Hold **refuses to dispatch**, logs a warning, and tells you to run
+> `jamesgifford:hold:announce` yourself. Set `announce_delay_minutes` to `0` if
+> you genuinely want an immediate send on a sync queue.
+>
+> You also need a **worker actually running** (`php artisan queue:work`) for a
+> delayed job to fire at all — Hold can check the connection, not your workers.
+
 ### Customizing the announcement emails
 
 Every package email renders through a **self-contained HTML template** with
@@ -363,6 +378,23 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `models.signup` | `App\Models\HoldSignup` | Resolved HoldSignup model. |
 | `models.namespace` / `models.path` | `App\Models` / `app/Models` | Where setup publishes the model (`HoldSignup.php`). |
 
+### Publish tags
+
+`jamesgifford:hold:setup` publishes everything for you; these tags exist for
+re-publishing a single asset group with `vendor:publish`:
+
+| Tag | Publishes |
+| --- | --- |
+| `jamesgifford-hold-config` | `config/jamesgifford/hold.php` |
+| `jamesgifford-hold-models` | `app/Models/HoldSignup.php` |
+| `jamesgifford-hold-views` | the holding pages, email templates, and the `errors/503.blade.php` shim |
+| `jamesgifford-hold-routes` | `routes/hold.php` (the self-hosted routes stub) |
+
+Note `vendor:publish --tag=jamesgifford-hold-models` publishes the model
+**verbatim**, without the namespace rewrite — use `jamesgifford:hold:setup` for
+that. The migration is not a publish tag at all; setup owns it, because it needs
+a fresh publish-time timestamp.
+
 ### Owning your routes
 
 Set `routes.register => false` and publish the routes stub to wire routing
@@ -377,6 +409,17 @@ php artisan vendor:publish --tag=jamesgifford-hold-routes
 Keep the prefix in sync with `routes.prefix`: the holding pages, the prelaunch
 allow-list, and the maintenance except-merge all read that value to know which
 URIs are "package routes".
+
+### The signup model contract
+
+Whatever `models.signup` points at must implement
+`JamesGifford\Hold\Contracts\HoldSignupContract` — it declares `unsubscribe()`,
+`resubscribe()`, and the columns the package reads. The published
+`App\Models\HoldSignup` implements it out of the box (setup writes it in), and so
+does any subclass of it. This is what lets the package resolve an app-owned class
+it has no static relationship with; a configured class that exists but does not
+implement the contract raises a clear exception rather than silently falling back
+to the package's own model.
 
 ## Customizing the views
 
@@ -463,23 +506,65 @@ storage directory, then drops the `hold_signups` table (with its own confirmatio
 `--keep-data` skips the drop and leaves the migration in place). Setup → uninstall
 round-trips to a clean state.
 
+**Dropping the table is always an explicit act.** If the run can't ask — `-n` /
+`--no-interaction`, as CI and deploy scripts use — the published assets are still
+removed but the table and its migration are **kept**, and the command says so.
+Pass `--force` to drop without being asked. In production, `uninstall` refuses
+outright without `--force`.
+
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `jamesgifford:hold:setup` | Publish config, migration, model, views; optionally migrate. |
-| `jamesgifford:hold:uninstall` | Remove everything published and drop the table (`--keep-data` to keep it). |
-| `jamesgifford:hold:enable {mode}` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). |
-| `jamesgifford:hold:disable` | Deactivate whichever hold is active; optionally auto-announce. |
-| `jamesgifford:hold:announce` | Email the launch/restore announcement (`--context`, `--dry-run`). |
+| Command | Flags | Purpose |
+| --- | --- | --- |
+| `jamesgifford:hold:setup` | `--force`, `--migrate` | Publish config, migration, model, views; optionally migrate. |
+| `jamesgifford:hold:uninstall` | `--force`, `--keep-data` | Remove everything published and drop the table (`--keep-data` to keep it). |
+| `jamesgifford:hold:enable {mode}` | — | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). |
+| `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. |
+| `jamesgifford:hold:announce` | `--context`, `--dry-run` | Email the launch/restore announcement. |
+| `jamesgifford:hold:unsubscribe {email}` | `--resubscribe` | Operator tool: set or clear a signup's unsubscribe state. |
+
+Neither `enable` nor `disable` is production-guarded — they are the normal way to
+put a live site into and out of a hold. `setup` and `uninstall` are guarded, and
+refuse to run in production without `--force`.
 
 ## Testing
 
+One command runs every gate — code style, static analysis, and the suite against
+both engines:
+
 ```bash
 composer install
-composer test          # vendor/bin/pest
-composer format        # vendor/bin/pint
+composer check
 ```
+
+The individual gates, if you want them separately:
+
+| Command | What it does |
+| --- | --- |
+| `composer lint` | Pint, check only |
+| `composer format` | Pint, apply fixes |
+| `composer analyse` | PHPStan level 6 (no baseline — findings get fixed, not recorded) |
+| `composer test` | The suite against **MariaDB** |
+| `composer test:sqlite` | The suite against SQLite |
+| `composer test:parallel` | The suite in parallel (see note below) |
+
+**The suite defaults to MariaDB**, because that is the deployment target and some
+invariants only exist there — notably that `requested_at` never acquires an
+implicit `ON UPDATE CURRENT_TIMESTAMP` on a server with
+`explicit_defaults_for_timestamp=0`. SQLite cannot express that, so running only
+on SQLite would mean asserting it rather than testing it.
+
+`composer test:parallel` gives each worker its own schema *and* its own storage
+tree, because prelaunch mode's source of truth is a flag file — without both,
+workers read each other's holds and the run produces false failures. The
+per-worker schemas are dropped automatically when the run finishes. On a suite
+this size it is not meaningfully faster than serial; it exists to prove the
+suite has no hidden shared state.
+
+Point it at your own server with `DB_HOST` / `DB_PORT` / `DB_DATABASE` /
+`DB_USERNAME` / `DB_PASSWORD` (defaults: `127.0.0.1:3306`, database `hold_test`,
+user `root`, password `root`). `DB_CONNECTION=sqlite` skips the MariaDB-only
+tests and needs no server. CI runs both.
 
 ## License
 
