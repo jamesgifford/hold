@@ -71,8 +71,13 @@ abstract class TestCase extends OrchestraTestCase
 
         // Laravel's file-based maintenance driver writes a flag into the shared
         // Testbench skeleton, which parallel workers would then see as each
-        // other's state. The in-memory driver keeps `down`/`up` per process.
-        $app['config']->set('app.maintenance.driver', 'array');
+        // other's state. Backing the cache driver with the array store keeps
+        // `down`/`up` in memory, per application. The dedicated `array`
+        // maintenance driver does the same but only exists from
+        // laravel/framework v13.16 — above this package's declared ^13.0 floor,
+        // so the lowest-dependency CI run could not resolve it.
+        $app['config']->set('app.maintenance.driver', 'cache');
+        $app['config']->set('app.maintenance.store', 'array');
 
         $this->defineDatabaseConnection($app);
         $this->isolateWorkerStorage($app);
