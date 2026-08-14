@@ -21,6 +21,10 @@
      * including both form-state messages ('success' after a signup, 'invalid'
      * for a bad email) — so you can review and reword every state in one place
      * without having to trigger it.
+     *
+     * 'title' and 'lede' double as sharing metadata (see below): make 'title'
+     * your actual app/product name, and 'lede' one specific promise about what
+     * it does or will do, in plain language — not generic marketing copy.
      */
     $copy = [
         'title'          => 'Launching soon',       // browser tab / <title>
@@ -71,8 +75,9 @@
     <meta name="twitter:card" content="{{ $ogImage ? 'summary_large_image' : 'summary' }}">
     <style>
         /*
-         * Reskin knobs: edit these four values to match your brand. Everything
-         * below derives from them, so a basic reskin is a three-line change.
+         * ── Palette ────────────────────────────────────────────────────────────
+         * Edit these four values to match your brand. Everything below derives
+         * from them, so a basic reskin is a three-line change.
          */
         :root {
             --hold-bg: #f5f6f8;

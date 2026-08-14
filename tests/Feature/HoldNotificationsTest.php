@@ -14,6 +14,7 @@ use JamesGifford\Hold\Jobs\SendAnnouncement;
 use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
+use JamesGifford\Hold\Notifications\ServiceRestored;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
 
 afterEach(function () {
@@ -147,6 +148,22 @@ it('still auto-announces on a sync queue when the delay is zero', function () {
     event(new MaintenanceModeDisabled);
 
     Queue::assertPushed(SendAnnouncement::class);
+});
+
+it('actually sends on a real sync queue, end to end, not just a faked dispatch', function () {
+    // Deliberately NOT Queue::fake() — a fake only proves the job was pushed.
+    // This lets Laravel's real SyncQueue run SendAnnouncement inline, through
+    // the real Announcer, to prove the fallback path genuinely delivers.
+    Notification::fake();
+    config()->set('queue.default', 'sync');
+    config()->set('jamesgifford.hold.notifications.auto_announce_on_up', true);
+    config()->set('jamesgifford.hold.notifications.announce_delay_minutes', 0);
+    $signup = HoldSignup::factory()->maintenance()->create();
+
+    event(new MaintenanceModeDisabled);
+
+    Notification::assertSentOnDemand(ServiceRestored::class);
+    expect($signup->fresh()->notified_at)->not->toBeNull();
 });
 
 it('auto-announces normally on a connection that can delay', function () {

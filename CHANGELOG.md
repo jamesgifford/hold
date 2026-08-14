@@ -5,7 +5,7 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-08-14
 
 ### Added
 
@@ -34,6 +34,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > either re-publish (`vendor:publish --tag=jamesgifford-hold-views --force`,
 > which overwrites local edits) or hand-add the new `$copy` keys, `$ogImage`,
 > and CSS variables — there is no automatic merge.
+
+### Fixed
+
+- **`uninstall` now removes `config/jamesgifford/` when it's the last thing
+  in it.** Previously only `hold.php` was deleted, leaving the (usually
+  empty) parent directory behind. If another `jamesgifford/*` package has
+  left files there, the directory — and those files — are left untouched.
+
+### Changed
+
+- **Email templates now share a single spacing unit** (`$space`), the same
+  approach the holding pages use, replacing the hardcoded per-element margins
+  that had drifted independently across `mail/announcement.blade.php`,
+  `mail/team.blade.php`, and `mail/receipt.blade.php`. Purely internal —
+  every rendered margin is unchanged (24/20/16/8/4px).
+- The holding pages' and emails' top-of-file color blocks are now both
+  labeled `── Palette ──`, reconciling the pages' former "Reskin knobs"
+  wording with the emails' existing convention.
+
+### Documentation
+
+- `config/hold.php`'s `mail.from.address` / `mail.from.name` now have their
+  own inline comments, matching every other key in the file.
+- README documents two previously-unstated limitations: prelaunch's flag
+  file is local-disk state, so it does not propagate across app servers
+  without shared storage; and maintenance mode's own storage follows
+  whatever `APP_MAINTENANCE_DRIVER` the host app is configured with — Hold
+  doesn't set or override that choice.
+- Brief copy-writing guidance added to the `$copy` blocks: the prelaunch
+  page's `title`/`lede` double as sharing metadata, so they should be a real
+  product name and one specific promise, not marketing phrasing; the
+  maintenance page's `eta`/`contact` should stay concrete and actually
+  staffed, not vague or generic.
+
+### Testing & tooling
+
+*No runtime effect.*
+
+- Added an end-to-end test proving the sync-queue auto-announce path
+  (`announce_delay_minutes = 0` on `QUEUE_CONNECTION=sync`) genuinely sends,
+  running the real job through Laravel's sync queue rather than asserting
+  against a faked dispatch.
+- Removed the unused `mockery/mockery` dev dependency (still installed
+  transitively via `orchestra/testbench`, just no longer declared directly).
 
 ## [1.1.0] - 2026-08-06
 
@@ -211,6 +255,6 @@ launch/restore announcement notifications.
 - Documented config covering routes, prelaunch, notifications (including announcement subjects), mail from-address override, spam protection, and model resolution / publish location.
 - A shipped Laravel Boost skill documenting the package's modes, commands, and customization surface.
 
-[Unreleased]: https://github.com/jamesgifford/hold/compare/v1.1.0...HEAD
+[1.2.0]: https://github.com/jamesgifford/hold/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/jamesgifford/hold/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/jamesgifford/hold/releases/tag/v1.0.0

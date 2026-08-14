@@ -150,7 +150,10 @@ return [
 
     'mail' => [
         'from' => [
+            // Envelope From address for package mail. Null uses config('mail.from.address').
             'address' => null,
+
+            // Envelope From name for package mail. Null uses config('mail.from.name').
             'name' => null,
         ],
     ],

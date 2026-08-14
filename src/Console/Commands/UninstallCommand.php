@@ -44,6 +44,9 @@ final class UninstallCommand extends Command
 
         $this->newLine();
         $this->removeFile($this->configTarget(), 'config');
+        // Other jamesgifford/* packages may share this directory — only prune
+        // it if hold.php was the last thing in it.
+        $this->pruneEmptyDirectory(dirname($this->configTarget()));
         // modelDirectory() is now the shared app/Models — remove only our file.
         $this->removeFile($this->modelTarget(), 'HoldSignup model');
 

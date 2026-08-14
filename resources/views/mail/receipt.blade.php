@@ -19,6 +19,16 @@
     $accent = '#2563eb';  // heading, links
 
     /*
+     * ── Spacing ──────────────────────────────────────────────────────────────
+     * Base spacing unit driving the vertical rhythm between the card's stacked
+     * elements below (header, heading, body paragraphs, button) — plain PHP,
+     * not a CSS custom property, for the same reason as the palette above
+     * (email clients support those poorly). Every margin below is a whole
+     * multiple of this one value.
+     */
+    $space = 4;  // px
+
+    /*
      * ── Header (optional) ────────────────────────────────────────────────────
      * A logo image OR a text wordmark above the heading. Set at most one. Leave
      * BOTH null (the default) and no header — and no header spacing — renders at
@@ -73,19 +83,19 @@
                     <tr>
                         <td style="background:{{ $card }}; border-radius:12px; padding:40px 40px 32px;">
                             @if ($logoUrl)
-                                <div style="margin:0 0 24px; text-align:center;">
+                                <div style="margin:0 0 {{ $space * 6 }}px; text-align:center;">
                                     <img src="{{ $logoUrl }}" alt="{{ $logoAlt }}" width="{{ $logoWidth }}" style="display:inline-block; width:{{ $logoWidth }}px; max-width:100%; height:auto; border:0; outline:none; -ms-interpolation-mode:bicubic;">
                                 </div>
                             @elseif ($logoName)
                                 {{-- Edit the wordmark's look here --}}
-                                <div style="margin:0 0 24px; text-align:center; font-size:22px; font-weight:800; letter-spacing:0.5px; color:{{ $accent }};">{{ $logoName }}</div>
+                                <div style="margin:0 0 {{ $space * 6 }}px; text-align:center; font-size:22px; font-weight:800; letter-spacing:0.5px; color:{{ $accent }};">{{ $logoName }}</div>
                             @endif
-                            <h1 style="margin:0 0 20px; font-size:24px; line-height:1.3; font-weight:700; color:{{ $accent }};">{{ $heading }}</h1>
+                            <h1 style="margin:0 0 {{ $space * 5 }}px; font-size:24px; line-height:1.3; font-weight:700; color:{{ $accent }};">{{ $heading }}</h1>
                             @foreach ($lines as $line)
-                                <p style="margin:0 0 16px; font-size:16px; color:{{ $text }};">{{ $line }}</p>
+                                <p style="margin:0 0 {{ $space * 4 }}px; font-size:16px; color:{{ $text }};">{{ $line }}</p>
                             @endforeach
                             @if ($actionUrl)
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 4px;">
+                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:{{ $space * 2 }}px 0 {{ $space }}px;">
                                     <tr>
                                         <td align="center" style="border-radius:8px; background:{{ $accent }};">
                                             <a href="{{ $actionUrl }}" target="_blank" rel="noopener" style="display:inline-block; padding:12px 28px; font-size:16px; font-weight:600; line-height:1; color:#ffffff; text-decoration:none; border-radius:8px;">{{ $actionText }}</a>

@@ -34,7 +34,9 @@
         // (and, like the mail template's header, adds no spacing when it
         // doesn't). 'apology' ships with default wording since it's almost
         // always wanted; 'eta' and 'contact' default to empty and are
-        // entirely per-app.
+        // entirely per-app. Keep 'eta' concrete — a real time/date beats a
+        // vague "soon" — and 'contact' a channel that's actually staffed
+        // right now, not a generic support address nobody's watching.
         'eta'            => '',  // plain-language return estimate, e.g. 'We expect to be back by 3pm PT'
         'apology'        => 'We know this is inconvenient — thank you for your patience.',
         'contact'        => '',  // optional; plain text or an <a href="mailto:...">link</a> — rendered UNESCAPED, see markup below
@@ -59,8 +61,9 @@
     <meta name="robots" content="noindex, nofollow">
     <style>
         /*
-         * Reskin knobs: edit these four values to match your brand. Everything
-         * below derives from them, so a basic reskin is a three-line change.
+         * ── Palette ────────────────────────────────────────────────────────────
+         * Edit these four values to match your brand. Everything below derives
+         * from them, so a basic reskin is a three-line change.
          */
         :root {
             --hold-bg: #f5f6f8;

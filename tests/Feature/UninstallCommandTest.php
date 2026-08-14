@@ -36,10 +36,21 @@ it('round-trips: setup then uninstall returns the app to a clean state', functio
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/receipt.blade.php'))->toBeFalse()
         ->and(File::isDirectory($this->appRoot.'/resources/views/vendor/hold'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.blade.php'))->toBeFalse()
-        ->and(File::isDirectory($this->appRoot.'/storage/jamesgifford/hold'))->toBeFalse();
+        ->and(File::isDirectory($this->appRoot.'/storage/jamesgifford/hold'))->toBeFalse()
+        ->and(File::isDirectory($this->appRoot.'/config/jamesgifford'))->toBeFalse();
 
     expect(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toBeEmpty();
     expect(Schema::hasTable('hold_signups'))->toBeFalse();
+});
+
+it('keeps config/jamesgifford/ when another package has left files there', function () {
+    File::put($this->appRoot.'/config/jamesgifford/other-package.php', '<?php return [];');
+
+    $this->artisan('jamesgifford:hold:uninstall', ['--force' => true])->assertSuccessful();
+
+    expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()
+        ->and(File::exists($this->appRoot.'/config/jamesgifford/other-package.php'))->toBeTrue()
+        ->and(File::isDirectory($this->appRoot.'/config/jamesgifford'))->toBeTrue();
 });
 
 it('keeps the data when run with --no-interaction and without --force', function () {

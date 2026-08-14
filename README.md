@@ -133,6 +133,13 @@ outstanding preview link and bypass cookie** — re-enabling issues a new token,
 old links (even with a still-valid signature) and old cookies stop working. Share
 the link printed by the most recent `enable`.
 
+> ⚠️ **Single-server limitation:** the flag file lives on local disk
+> (`storage/jamesgifford/hold/`), not in a shared store. On a multi-server
+> deployment without shared storage for that path, enabling prelaunch on one
+> server does not affect the others — they'll keep serving the real app. Route
+> `enable`/`disable` through a single node, or point `storage/jamesgifford/hold/`
+> at shared storage, if you run more than one app server.
+
 ### Maintenance
 
 `enable maintenance` runs Laravel's native `php artisan down` for you (with a
@@ -141,6 +148,12 @@ runs `php artisan up`. Laravel's maintenance mode is the **untouched underlying
 mechanism** — Hold just manages it, keeps its own routes reachable so the capture
 form works, and records signups with the `maintenance` context. When
 `auto_announce_on_up` is enabled, `up` schedules the "we're back" announcement.
+
+Maintenance mode's own storage — and so its multi-server behavior — is
+whatever your app's `APP_MAINTENANCE_DRIVER` is configured to (Laravel
+supports `file` and `cache` drivers). Hold doesn't set or override that
+choice; if you run more than one app server, point it at a `cache` driver
+backed by a shared store, same as you would for a bare `artisan down`.
 
 **Native `down`/`up` still work directly** (deploy tooling often calls them), which
 bypasses Hold's one-hold check — so Hold **self-heals**: if prelaunch is active
