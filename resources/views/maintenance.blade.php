@@ -44,6 +44,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $copy['title'] }}</title>
+    {{-- Secondary protection behind the 503 status: keeps this page itself
+         out of search results even if a crawler somehow indexes it. --}}
+    <meta name="robots" content="noindex, nofollow">
     <style>
         /*
          * Reskin knobs: edit these four values to match your brand. Everything

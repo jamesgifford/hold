@@ -161,6 +161,11 @@ needs `--retry` passed manually.
 > pre-launch phase, either skip `down`/`up` in your deploy script or re-enable
 > prelaunch (`jamesgifford:hold:enable prelaunch`) as the final deploy step.
 
+The maintenance page also ships a `<meta name="robots" content="noindex, nofollow">`
+tag — defense-in-depth behind the 503 status, in case a crawler somehow indexes
+the page anyway. The prelaunch page deliberately does **not** get this; it's
+meant to be indexable (see [Prelaunch sharing metadata](#prelaunch-sharing-metadata)).
+
 #### The maintenance template (shim pattern)
 
 Setup publishes the maintenance capture page as
