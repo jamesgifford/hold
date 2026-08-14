@@ -501,6 +501,24 @@ any of the three to `''` and it disappears completely, spacing included.
 raw `<a href="mailto:...">` link) — every other `$copy` string is
 HTML-escaped automatically.
 
+#### Prelaunch sharing metadata
+
+The prelaunch page is meant to be found and shared, so it renders proper
+`<title>`/`<meta name="description">` and Open Graph/Twitter Card tags,
+driven by the same `$copy` values — `title` for `<title>`/`og:title` and
+`lede` for the description/`og:description` (falling back to `config('app.name')`
+and the title, respectively, if either is blank). `og:url` is the current
+URL; `og:type` is always `website`. The maintenance page deliberately does
+**not** get any of this — it has `noindex` instead (see above).
+
+**`$ogImage`** is a variable at the top of the file (default `null`) for the
+share-preview image. Like the email templates' `$logoUrl`, it **must be an
+absolute, publicly reachable URL** — a local/relative path won't resolve for
+a crawler or a chat app's link-preview fetcher — and the conventional size is
+around 1200×630. Leave it `null` and `og:image` is omitted entirely (not
+emitted empty) and `twitter:card` is `summary`; set it and `twitter:card`
+becomes `summary_large_image`.
+
 The email templates live alongside them under `mail/` — see
 [Customizing the announcement emails](#customizing-the-announcement-emails) for
 their palette, header/logo, and copy model.

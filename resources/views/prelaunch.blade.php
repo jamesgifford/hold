@@ -35,13 +35,40 @@
         'note'           => 'We\'ll email you once when we\'re live. Unsubscribe anytime.',
         'honeypot_label' => 'Leave this field empty',  // off-screen; only bots see it
     ];
+
+    /*
+     * ── Sharing metadata ─────────────────────────────────────────────────────
+     * The prelaunch page is meant to be found and shared, so it gets proper
+     * title/description/Open Graph/Twitter Card tags driven by $copy above.
+     * The maintenance page deliberately does NOT get these (see its meta
+     * robots noindex instead).
+     */
+    $metaTitle = $copy['title'] !== '' ? $copy['title'] : (string) config('app.name', 'Coming soon');
+    $metaDescription = $copy['lede'] !== '' ? $copy['lede'] : $metaTitle;
+    $currentUrl = url()->current();
+
+    // Absolute, publicly reachable image URL for social share previews — same
+    // requirement as the email logo (a local/relative path won't resolve for a
+    // crawler or a chat app's link-preview fetcher). Conventional size ~1200x630.
+    // Leave null to omit og:image (twitter:card then falls back to 'summary').
+    $ogImage = null;
 @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $copy['title'] }}</title>
+    <title>{{ $metaTitle }}</title>
+    <meta name="description" content="{{ $metaDescription }}">
+
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ $currentUrl }}">
+    @if ($ogImage)
+        <meta property="og:image" content="{{ $ogImage }}">
+    @endif
+    <meta name="twitter:card" content="{{ $ogImage ? 'summary_large_image' : 'summary' }}">
     <style>
         /*
          * Reskin knobs: edit these four values to match your brand. Everything
