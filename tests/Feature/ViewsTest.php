@@ -46,3 +46,41 @@ it('drives inter-element spacing from a single spacing variable', function () {
             ->toContain('.hold-card > * + *');
     }
 });
+
+// --- accessibility ------------------------------------------------------
+
+it('renders exactly one h1 and no headings used purely for styling', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        $html = holdRender($view);
+
+        expect(substr_count($html, '<h1'))->toBe(1)
+            ->and($html)->not->toContain('<h2')
+            ->not->toContain('<h3');
+    }
+});
+
+it('associates a label with the email input on both pages', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        expect(holdRender($view))
+            ->toContain('<label for="hold-email">')
+            ->toContain('id="hold-email"');
+    }
+});
+
+it('hides the honeypot from assistive tech and the tab order, not just visually', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        expect(holdRender($view))
+            ->toContain('class="hold-hp" aria-hidden="true"')
+            ->toContain('tabindex="-1"');
+    }
+});
+
+it('announces the success and error form states via a live region', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        request()->merge(['hold' => 'subscribed']);
+        expect(holdRender($view))->toContain('role="status"');
+
+        request()->merge(['hold' => 'invalid']);
+        expect(holdRender($view))->toContain('role="alert"');
+    }
+});
