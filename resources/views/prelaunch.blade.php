@@ -52,6 +52,17 @@
             --hold-card-bg: #ffffff;
             --hold-text: #1a1d24;
             --hold-accent: #2563eb;
+
+            /* Reading width: ~60-70 characters per line at the base font
+               size, not an arbitrary pixel value — keeps prose comfortable
+               regardless of copy length. */
+            --hold-content-width: 65ch;
+
+            /* Single spacing value driving the vertical rhythm between the
+               card's stacked elements below, instead of ad-hoc per-element
+               margins — this is what keeps the layout sane as optional
+               elements (alert, etc.) come and go. */
+            --hold-space: 1.25rem;
         }
 
         * { box-sizing: border-box; }
@@ -71,12 +82,24 @@
 
         .hold-card {
             width: 100%;
-            max-width: 30rem;
+            max-width: var(--hold-content-width);
             background: var(--hold-card-bg);
             border-radius: 16px;
             padding: 2.5rem 2rem;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
             text-align: center;
+        }
+
+        /* Vertical rhythm: every direct child of the card gets no margin of
+           its own, and a single top margin from --hold-space once it has a
+           preceding sibling — so spacing stays consistent no matter which
+           optional elements (e.g. the alert) are present. */
+        .hold-card > * {
+            margin: 0;
+        }
+
+        .hold-card > * + * {
+            margin-top: var(--hold-space);
         }
 
         .hold-eyebrow {
@@ -85,24 +108,21 @@
             font-size: 0.75rem;
             font-weight: 600;
             color: var(--hold-accent);
-            margin: 0 0 0.75rem;
         }
 
         .hold-card h1 {
-            margin: 0 0 0.75rem;
             font-size: 1.75rem;
             line-height: 1.2;
         }
 
         .hold-lede {
-            margin: 0 0 1.75rem;
             opacity: 0.75;
         }
 
         .hold-form {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: calc(var(--hold-space) * 0.6);
             text-align: left;
         }
 
@@ -151,7 +171,6 @@
         .hold-button:hover { filter: brightness(1.05); }
 
         .hold-note {
-            margin: 1rem 0 0;
             font-size: 0.8rem;
             opacity: 0.6;
         }
@@ -159,7 +178,6 @@
         .hold-alert {
             border-radius: 10px;
             padding: 0.85rem 1rem;
-            margin-bottom: 1.25rem;
             font-size: 0.95rem;
             text-align: left;
         }

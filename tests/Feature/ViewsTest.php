@@ -30,3 +30,19 @@ it('honors a custom route prefix in the form action', function () {
 
     expect($html)->toContain('action="'.url('soon/signup').'"');
 });
+
+it('uses a reading-width content variable instead of a fixed pixel max-width', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        expect(holdRender($view))
+            ->toContain('--hold-content-width:')
+            ->not->toContain('max-width: 30rem');
+    }
+});
+
+it('drives inter-element spacing from a single spacing variable', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        expect(holdRender($view))
+            ->toContain('--hold-space:')
+            ->toContain('.hold-card > * + *');
+    }
+});

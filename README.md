@@ -473,6 +473,15 @@ inline CSS and **no build step** — they render even when your app is half-brok
 }
 ```
 
+**Layout** is two more custom properties alongside the color knobs:
+`--hold-content-width` (default `65ch`) sets the card's max-width in reading
+terms — roughly 60-70 characters per line at the base font size — rather than
+an arbitrary pixel value; `--hold-space` (default `1.25rem`) is the single
+spacing value that drives the vertical rhythm between the card's stacked
+elements (`.hold-card > * + *`), so the page composes cleanly no matter which
+optional elements — the alert, and on the maintenance page eta/apology/contact
+— are present at any given moment.
+
 **Copy** is a `$copy` block beside them holding *every* user-visible string —
 title, heading, sub-text, the email field's label/placeholder, the button, the
 privacy note, and both form-state messages (the `success` line shown after a
