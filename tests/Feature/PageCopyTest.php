@@ -110,3 +110,56 @@ it('renders edited maintenance $copy, including the success and error states', f
     expect(renderPage('hold::maintenance', 'subscribed'))->toContain('EDITED-SUCCESS');
     expect(renderPage('hold::maintenance', 'invalid'))->toContain('EDITED-ERROR');
 });
+
+// --- maintenance-only extras: eta / apology / contact -----------------------
+
+it('ships maintenance with a default apology and no eta/contact', function () {
+    $html = renderPage('hold::maintenance', null);
+
+    expect($html)
+        ->toContain('class="hold-apology"')
+        ->toContain('inconvenient')
+        ->not->toContain('class="hold-eta"')
+        ->not->toContain('class="hold-contact"');
+});
+
+it('renders the eta line only when copy eta is set', function () {
+    publishEditedPage('maintenance', [
+        "'eta'            => '',  // plain-language return estimate, e.g. 'We expect to be back by 3pm PT'" => "'eta'            => 'We expect to be back by 3pm PT.',",
+    ]);
+
+    expect(renderPage('hold::maintenance', null))
+        ->toContain('class="hold-eta"')
+        ->toContain('3pm PT');
+});
+
+it('renders the contact line unescaped, allowing a mailto link', function () {
+    publishEditedPage('maintenance', [
+        "'contact'        => '',  // optional; plain text or an <a href=\"mailto:...\">link</a> — rendered UNESCAPED, see markup below" => '\'contact\'        => \'Urgent? <a href="mailto:ops@example.com">ops@example.com</a>\',',
+    ]);
+
+    expect(renderPage('hold::maintenance', null))
+        ->toContain('class="hold-contact"')
+        ->toContain('<a href="mailto:ops@example.com">ops@example.com</a>');
+});
+
+it('lets the apology be cleared to empty and disappears entirely', function () {
+    publishEditedPage('maintenance', [
+        "'apology'        => 'We know this is inconvenient — thank you for your patience.'," => "'apology'        => '',",
+    ]);
+
+    expect(renderPage('hold::maintenance', null))->not->toContain('class="hold-apology"');
+});
+
+it('collapses eta/apology/contact leaving no wrapper when all are unset', function () {
+    publishEditedPage('maintenance', [
+        "'apology'        => 'We know this is inconvenient — thank you for your patience.'," => "'apology'        => '',",
+    ]);
+
+    $html = renderPage('hold::maintenance', null);
+
+    expect($html)
+        ->not->toContain('class="hold-apology"')
+        ->not->toContain('class="hold-eta"')
+        ->not->toContain('class="hold-contact"');
+});

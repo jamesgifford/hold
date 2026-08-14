@@ -29,6 +29,16 @@
         'eyebrow'        => 'Maintenance',                        // small label above the heading
         'heading'        => 'We\'ll be right back',
         'lede'           => 'We\'re making some improvements and will be back online shortly. Leave your email and we\'ll let you know the moment we\'re back.',
+
+        // Maintenance-only extras below — each renders ONLY when non-empty
+        // (and, like the mail template's header, adds no spacing when it
+        // doesn't). 'apology' ships with default wording since it's almost
+        // always wanted; 'eta' and 'contact' default to empty and are
+        // entirely per-app.
+        'eta'            => '',  // plain-language return estimate, e.g. 'We expect to be back by 3pm PT'
+        'apology'        => 'We know this is inconvenient — thank you for your patience.',
+        'contact'        => '',  // optional; plain text or an <a href="mailto:...">link</a> — rendered UNESCAPED, see markup below
+
         'success'        => 'Thanks — we\'ll email you the moment we\'re back online.',
         'invalid'        => 'Please enter a valid email address.',
         'email_label'    => 'Email address',
@@ -124,6 +134,19 @@
             opacity: 0.75;
         }
 
+        .hold-apology {
+            opacity: 0.75;
+        }
+
+        .hold-eta {
+            font-weight: 600;
+        }
+
+        .hold-contact {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+
         .hold-form {
             display: flex;
             flex-direction: column;
@@ -204,6 +227,14 @@
         <h1>{{ $copy['heading'] }}</h1>
         <p class="hold-lede">{{ $copy['lede'] }}</p>
 
+        @if ($copy['apology'] !== '')
+            <p class="hold-apology">{{ $copy['apology'] }}</p>
+        @endif
+
+        @if ($copy['eta'] !== '')
+            <p class="hold-eta">{{ $copy['eta'] }}</p>
+        @endif
+
         @if ($status === 'subscribed')
             <div class="hold-alert hold-alert--success" role="status">
                 {{ $copy['success'] }}
@@ -231,6 +262,10 @@
 
             <button type="submit" class="hold-button">{{ $copy['button'] }}</button>
         </form>
+
+        @if ($copy['contact'] !== '')
+            <p class="hold-contact">{!! $copy['contact'] !!}</p>
+        @endif
 
         <p class="hold-note">{{ $copy['note'] }}</p>
     </main>

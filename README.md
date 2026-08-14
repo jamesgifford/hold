@@ -490,6 +490,17 @@ block so you can reword them in one place without triggering them; edit any line
 and it renders. Each page is self-contained, so the strings the two pages share
 are duplicated per file by design — there is no shared copy include.
 
+**The maintenance page has three extra `$copy` strings** beyond the shared
+set: `eta` (a plain-language return estimate, e.g. "We expect to be back by
+3pm PT"), `apology` (a brief acknowledgment that the downtime is
+inconvenient — ships with default wording, since it's almost always wanted),
+and `contact` (an optional line for urgent issues). Like the mail templates'
+logo header, each renders — and adds spacing — only when non-empty; clear
+any of the three to `''` and it disappears completely, spacing included.
+**`contact` is the one `$copy` value rendered unescaped** (so it can carry a
+raw `<a href="mailto:...">` link) — every other `$copy` string is
+HTML-escaped automatically.
+
 The email templates live alongside them under `mail/` — see
 [Customizing the announcement emails](#customizing-the-announcement-emails) for
 their palette, header/logo, and copy model.
