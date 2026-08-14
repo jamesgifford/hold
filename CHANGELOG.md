@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`Retry-After` on maintenance mode.** `maintenance.retry_after` (default
+  `3600`s) is passed through to `down --retry` when maintenance is enabled via
+  `jamesgifford:hold:enable maintenance`, so the 503 response carries a
+  `Retry-After` header — protecting search-index standing during extended
+  outages. Override per-run with `--retry=<seconds>`; `0`/`null` omits it.
+  Only applies when maintenance is enabled through Hold.
+- **Meta robots `noindex, nofollow`** on the maintenance page (secondary
+  protection behind the 503 status). The prelaunch page is unaffected — it's
+  meant to be indexable.
+- **Three new maintenance-page `$copy` strings**: `eta`, `apology` (ships
+  with default wording), and `contact` — each renders, with spacing, only
+  when non-empty, mirroring the email templates' logo-header collapse
+  pattern. `contact` is rendered unescaped so it can carry a `mailto:` link.
+- **Prelaunch sharing metadata**: `<title>`/`<meta name="description">` and
+  Open Graph/Twitter Card tags, driven by the existing `$copy['title']`/
+  `['lede']`, plus a new `$ogImage` variable for the share-preview image.
+  Not added to the maintenance page.
+- **Reading-width and spacing-scale CSS variables** (`--hold-content-width`,
+  `--hold-space`) replace the previous fixed `30rem` card width and the
+  scattered per-element margins on both holding pages.
+
+> **Existing installs:** page templates published before this release need to
+> either re-publish (`vendor:publish --tag=jamesgifford-hold-views --force`,
+> which overwrites local edits) or hand-add the new `$copy` keys, `$ogImage`,
+> and CSS variables — there is no automatic merge.
+
 ## [1.1.0] - 2026-08-06
 
 > ### Upgrading from 1.0.0 — read this first

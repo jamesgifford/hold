@@ -519,6 +519,14 @@ around 1200×630. Leave it `null` and `og:image` is omitted entirely (not
 emitted empty) and `twitter:card` is `summary`; set it and `twitter:card`
 becomes `summary_large_image`.
 
+> **Existing installs:** a page template published before the layout
+> variables (`--hold-content-width`, `--hold-space`), the maintenance
+> `eta`/`apology`/`contact` `$copy` keys, or the prelaunch sharing-metadata
+> block (`$ogImage` and friends) won't have them. Re-publish it (delete your
+> copy and re-run setup, or `vendor:publish --tag=jamesgifford-hold-views
+> --force`) or hand-add the pieces you want from the package copy — there is
+> no automatic merge.
+
 The email templates live alongside them under `mail/` — see
 [Customizing the announcement emails](#customizing-the-announcement-emails) for
 their palette, header/logo, and copy model.
