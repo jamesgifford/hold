@@ -147,6 +147,15 @@ bypasses Hold's one-hold check — so Hold **self-heals**: if prelaunch is activ
 when maintenance comes up natively, Hold automatically disables prelaunch (logging
 an informational line) so only one hold is ever active.
 
+**Retry-After.** `enable maintenance` passes `maintenance.retry_after` (default
+`3600` seconds) through to `down --retry`, which Laravel echoes back as the
+response's `Retry-After` header — this tells crawlers and uptime checks when to
+come back and protects your search-index standing during an extended outage.
+Override it per-run with `--retry=<seconds>`; either source set to `0` (or the
+config set to `null`) omits the flag, and so the header, entirely. This **only
+applies when maintenance is enabled through Hold** — a bare `php artisan down`
+needs `--retry` passed manually.
+
 > ⚠️ **Deploy caveat:** a deploy script that wraps the deploy in `artisan down`/`up`
 > will therefore knock the app **out of prelaunch** via self-heal. During the
 > pre-launch phase, either skip `down`/`up` in your deploy script or re-enable
@@ -366,6 +375,7 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `prelaunch.status_code` | `200` | HTTP status for the prelaunch page (`200` or `503`). |
 | `prelaunch.bypass_cookie_name` | `hold_bypass` | Name of the preview bypass cookie. |
 | `prelaunch.bypass_cookie_lifetime_days` | `30` | Bypass cookie lifetime. |
+| `maintenance.retry_after` | `3600` | Seconds sent as the `Retry-After` header when maintenance is enabled via `enable maintenance` (`--retry` overrides; `0`/`null` omits it). Only applies to holds enabled through Hold — a bare `artisan down` needs `--retry` passed manually. |
 | `notifications.team_addresses` | `[]` | Who receives the "hold enabled" notice. |
 | `notifications.send_signup_receipt` | `false` | Email each new signup a receipt. |
 | `notifications.auto_announce_on_up` | `false` | Auto-schedule the announcement when a hold ends. |
@@ -518,7 +528,7 @@ outright without `--force`.
 | --- | --- | --- |
 | `jamesgifford:hold:setup` | `--force`, `--migrate` | Publish config, migration, model, views; optionally migrate. |
 | `jamesgifford:hold:uninstall` | `--force`, `--keep-data` | Remove everything published and drop the table (`--keep-data` to keep it). |
-| `jamesgifford:hold:enable {mode}` | — | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). |
+| `jamesgifford:hold:enable {mode}` | `--retry` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). `--retry=<seconds>` overrides `maintenance.retry_after` for a maintenance enable. |
 | `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. |
 | `jamesgifford:hold:announce` | `--context`, `--dry-run` | Email the launch/restore announcement. |
 | `jamesgifford:hold:unsubscribe {email}` | `--resubscribe` | Operator tool: set or clear a signup's unsubscribe state. |

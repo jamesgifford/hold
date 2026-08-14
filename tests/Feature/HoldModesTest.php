@@ -45,6 +45,49 @@ it('enable maintenance takes the app down and prints a working secret bypass lin
     $this->get('/'.$secret)->assertRedirect('/');
 });
 
+it('sets Retry-After from the default retry_after config', function () {
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'maintenance'])->assertSuccessful();
+
+    $this->get('/')->assertStatus(503)->assertHeader('Retry-After', '3600');
+});
+
+it('passes a configured retry_after through to down as Retry-After', function () {
+    config()->set('jamesgifford.hold.maintenance.retry_after', 120);
+
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'maintenance'])->assertSuccessful();
+
+    expect($this->app->maintenanceMode()->data()['retry'])->toBe(120);
+    $this->get('/')->assertStatus(503)->assertHeader('Retry-After', '120');
+});
+
+it('lets --retry override the configured retry_after', function () {
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'maintenance', '--retry' => 45])->assertSuccessful();
+
+    $this->get('/')->assertStatus(503)->assertHeader('Retry-After', '45');
+});
+
+it('omits Retry-After when retry_after is null', function () {
+    config()->set('jamesgifford.hold.maintenance.retry_after', null);
+
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'maintenance'])->assertSuccessful();
+
+    $this->get('/')->assertStatus(503)->assertHeaderMissing('Retry-After');
+});
+
+it('omits Retry-After when retry_after is 0', function () {
+    config()->set('jamesgifford.hold.maintenance.retry_after', 0);
+
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'maintenance'])->assertSuccessful();
+
+    $this->get('/')->assertStatus(503)->assertHeaderMissing('Retry-After');
+});
+
+it('lets --retry=0 override a nonzero config to omit Retry-After', function () {
+    $this->artisan('jamesgifford:hold:enable', ['mode' => 'maintenance', '--retry' => 0])->assertSuccessful();
+
+    $this->get('/')->assertStatus(503)->assertHeaderMissing('Retry-After');
+});
+
 it('enable maintenance dispatches MaintenanceModeEnabled, matching native down', function () {
     Event::fake([MaintenanceModeEnabled::class]);
 

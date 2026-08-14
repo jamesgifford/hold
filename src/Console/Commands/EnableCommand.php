@@ -28,7 +28,9 @@ final class EnableCommand extends Command
 {
     use InteractsWithHoldModes;
 
-    protected $signature = 'jamesgifford:hold:enable {mode : Which hold to activate: prelaunch or maintenance}';
+    protected $signature = 'jamesgifford:hold:enable
+        {mode : Which hold to activate: prelaunch or maintenance}
+        {--retry= : Seconds for the maintenance Retry-After header (overrides maintenance.retry_after); 0 omits it}';
 
     protected $description = 'Activate a hold (prelaunch or maintenance). Only one may be active at a time.';
 
@@ -86,7 +88,13 @@ final class EnableCommand extends Command
         // send it here too.
         $secret = Str::random(40);
 
-        $code = $this->call('down', ['--secret' => $secret]);
+        $downOptions = ['--secret' => $secret];
+
+        if (($retry = $this->resolveRetryAfter()) !== null) {
+            $downOptions['--retry'] = $retry;
+        }
+
+        $code = $this->call('down', $downOptions);
 
         if ($code !== self::SUCCESS) {
             $this->error('Failed to enable maintenance mode (see output above).');
@@ -101,6 +109,21 @@ final class EnableCommand extends Command
         $this->line('    '.url($secret));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The --retry option, falling back to config. Null/0 (from either source)
+     * means omit the flag entirely, matching `down`'s own semantics.
+     */
+    private function resolveRetryAfter(): ?string
+    {
+        $retry = $this->option('retry') ?? config('jamesgifford.hold.maintenance.retry_after', 3600);
+
+        if ($retry === null || (int) $retry <= 0) {
+            return null;
+        }
+
+        return (string) $retry;
     }
 
     private function printPreviewLink(HoldState $state): void

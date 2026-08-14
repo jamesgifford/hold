@@ -24,6 +24,10 @@ it('merges every documented config default', function () {
         'bypass_cookie_lifetime_days' => 30,
     ]);
 
+    expect($config['maintenance'])->toMatchArray([
+        'retry_after' => 3600,
+    ]);
+
     expect($config['notifications'])->toMatchArray([
         'team_addresses' => [],
         'send_signup_receipt' => false,

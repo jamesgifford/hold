@@ -67,6 +67,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Maintenance mode
+    |--------------------------------------------------------------------------
+    |
+    | Options that apply when maintenance mode is enabled THROUGH Hold
+    | (`jamesgifford:hold:enable maintenance`). A bare `php artisan down` does
+    | not read this config — pass the equivalent flags to it directly.
+    |
+    */
+
+    'maintenance' => [
+
+        // Seconds passed as `down`'s --retry option, echoed back as the
+        // response's Retry-After header — tells crawlers/uptime checks when
+        // to come back and protects search-index standing during an
+        // extended outage. `--retry` on `jamesgifford:hold:enable
+        // maintenance` overrides this. A null or 0 value omits the flag
+        // (and so the header) entirely.
+        'retry_after' => 3600,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Notifications
     |--------------------------------------------------------------------------
     |

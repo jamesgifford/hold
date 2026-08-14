@@ -30,6 +30,16 @@ it('503s a normal route but keeps the package signup route reachable while down'
     expect(HoldSignup::where('email', 'maint@example.com')->exists())->toBeTrue();
 });
 
+it('carries the Retry-After header when the maintenance payload includes retry', function () {
+    app()->maintenanceMode()->activate(['status' => 503, 'retry' => 300]);
+
+    try {
+        $this->get('/')->assertStatus(503)->assertHeader('Retry-After', '300');
+    } finally {
+        app()->maintenanceMode()->deactivate();
+    }
+});
+
 it('merges the configured route prefix into the excluded paths', function () {
     config()->set('jamesgifford.hold.routes.prefix', 'coming-soon');
 

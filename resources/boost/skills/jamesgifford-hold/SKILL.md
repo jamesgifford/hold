@@ -73,6 +73,8 @@ user-facing unsubscribe (no route, no link). Set/clear it via `HoldSignup::unsub
 - `jamesgifford:hold:enable {mode}` — activate a hold: `prelaunch` (prints a signed
   preview link) or `maintenance` (invokes `down` with a bypass secret and prints
   the secret link). Refuses if a hold is already active — no override; disable first.
+  Flag: `--retry=<seconds>` (maintenance only) sets the `Retry-After` header via
+  `down --retry`, overriding `maintenance.retry_after`; `0` omits it.
 - `jamesgifford:hold:disable` — deactivate whichever hold is active (prelaunch and/or
   maintenance); may auto-schedule the launch/restore announcement (see config).
   On a `sync` queue with a non-zero delay it REFUSES to schedule and says so —
@@ -98,6 +100,9 @@ Published to `config/jamesgifford/hold.php`:
 - `routes.register` / `routes.prefix` / `routes.middleware` — set `register` false
   to own routing (publish the routes stub); keep `prefix` in sync everywhere.
 - `prelaunch.status_code` (200/503), `prelaunch.bypass_cookie_name` / `..._lifetime_days`.
+- `maintenance.retry_after` (default 3600) — seconds sent as the `Retry-After`
+  header when maintenance is enabled through Hold; `--retry` on `enable` overrides
+  it; `0`/`null` omits the header. A bare `artisan down` needs `--retry` manually.
 - `notifications.team_addresses` (empty = no team notice), `notifications.send_signup_receipt`,
   `notifications.auto_announce_on_up`, `notifications.announce_delay_minutes` (the
   change-of-mind delay before an auto-announce sends). Auto-announce needs a queue
