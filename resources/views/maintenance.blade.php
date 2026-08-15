@@ -1,23 +1,5 @@
 @php
     /*
-     * The maintenance-mode capture page. Published to the host app at
-     * resources/views/vendor/hold/maintenance.blade.php (edit it there); the
-     * published resources/views/errors/503.blade.php is a thin shim that renders
-     * this view when Laravel is down (`php artisan down`).
-     *
-     * IMPORTANT: this page renders during an aborted maintenance request, before
-     * the session middleware runs — so it must not depend on session, @csrf, or
-     * old(). The signup route is CSRF-exempt and reachable during maintenance
-     * (the package merges it into the maintenance `except` list); feedback comes
-     * back as a `?hold=` query param. Do NOT switch the app to `down --render`:
-     * that bypasses the HTTP kernel and the signup POST would stop working.
-     */
-    $prefix = trim((string) config('jamesgifford.hold.routes.prefix', 'hold'), '/');
-    $action = url($prefix.'/signup');
-    $honeypot = config('jamesgifford.hold.spam.honeypot_field', 'website');
-    $status = request('hold');
-
-    /*
      * ── Palette ─────────────────────────────────────────────────────────────
      * Set $bg to reskin — everything below derives from it automatically.
      * Leave a variable null to auto-derive it, or set it directly to
@@ -84,6 +66,24 @@
         'note'           => 'We\'ll email you once when we\'re back. Unsubscribe anytime.',
         'honeypot_label' => 'Leave this field empty',  // off-screen; only bots see it
     ];
+
+    /*
+     * The maintenance-mode capture page. Published to the host app at
+     * resources/views/vendor/hold/maintenance.blade.php (edit it there); the
+     * published resources/views/errors/503.blade.php is a thin shim that renders
+     * this view when Laravel is down (`php artisan down`).
+     *
+     * IMPORTANT: this page renders during an aborted maintenance request, before
+     * the session middleware runs — so it must not depend on session, @csrf, or
+     * old(). The signup route is CSRF-exempt and reachable during maintenance
+     * (the package merges it into the maintenance `except` list); feedback comes
+     * back as a `?hold=` query param. Do NOT switch the app to `down --render`:
+     * that bypasses the HTTP kernel and the signup POST would stop working.
+     */
+    $prefix = trim((string) config('jamesgifford.hold.routes.prefix', 'hold'), '/');
+    $action = url($prefix.'/signup');
+    $honeypot = config('jamesgifford.hold.spam.honeypot_field', 'website');
+    $status = request('hold');
 @endphp
 <!DOCTYPE html>
 <html lang="en">

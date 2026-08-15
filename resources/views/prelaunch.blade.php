@@ -1,21 +1,5 @@
 @php
     /*
-     * Resolved once so the markup stays declarative.
-     *
-     * The form posts to the package signup route, built from the configured
-     * prefix so it works even when named routes aren't loaded. Feedback comes
-     * back as a `?hold=` query param, NOT session flash: this page can render
-     * from global middleware BEFORE Laravel starts the session (and the 503
-     * page renders during an aborted maintenance request), so session/@csrf are
-     * not dependable here. The signup route is CSRF-exempt for the same reason;
-     * honeypot + rate limiting guard the endpoint.
-     */
-    $prefix = trim((string) config('jamesgifford.hold.routes.prefix', 'hold'), '/');
-    $action = url($prefix.'/signup');
-    $honeypot = config('jamesgifford.hold.spam.honeypot_field', 'website');
-    $status = request('hold');
-
-    /*
      * ── Palette ─────────────────────────────────────────────────────────────
      * Set $bg to reskin — everything below derives from it automatically.
      * Leave a variable null to auto-derive it, or set it directly to
@@ -91,6 +75,22 @@
     // crawler or a chat app's link-preview fetcher). Conventional size ~1200x630.
     // Leave null to omit og:image (twitter:card then falls back to 'summary').
     $ogImage = null;
+
+    /*
+     * Resolved once so the markup stays declarative.
+     *
+     * The form posts to the package signup route, built from the configured
+     * prefix so it works even when named routes aren't loaded. Feedback comes
+     * back as a `?hold=` query param, NOT session flash: this page can render
+     * from global middleware BEFORE Laravel starts the session (and the 503
+     * page renders during an aborted maintenance request), so session/@csrf are
+     * not dependable here. The signup route is CSRF-exempt for the same reason;
+     * honeypot + rate limiting guard the endpoint.
+     */
+    $prefix = trim((string) config('jamesgifford.hold.routes.prefix', 'hold'), '/');
+    $action = url($prefix.'/signup');
+    $honeypot = config('jamesgifford.hold.spam.honeypot_field', 'website');
+    $status = request('hold');
 @endphp
 <!DOCTYPE html>
 <html lang="en">
