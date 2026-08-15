@@ -18,6 +18,36 @@
     $status = request('hold');
 
     /*
+     * ── Palette ─────────────────────────────────────────────────────────────
+     * Set $bg and $accent to reskin — $text, $cardBg, and $inputBg derive
+     * automatically from $bg (including switching to light text on a dark
+     * background), so a basic reskin is a two-line change. Set any of the
+     * three directly below (null means auto-derive, a real value wins
+     * outright) to take manual control of just that one value instead.
+     *
+     * Plain PHP variables here, not literals inside the <style> block below,
+     * like the mail templates' palette: picking a readable text color for an
+     * arbitrary $bg needs real branching logic (compare WCAG contrast
+     * against a light and a dark candidate, keep the higher), and there's no
+     * broadly-supported CSS function that can do that yet — see
+     * JamesGifford\Hold\Support\ColorTheme for the actual math.
+     *
+     * $accent is NOT derived from $bg — it also colors the submit button,
+     * whose label is fixed white text, so pick one that reads well as a
+     * background on its own.
+     */
+    $bg = '#f5f6f8';
+    $accent = '#2563eb';
+
+    $text = null;     // set to override the automatic light/dark derivation
+    $cardBg = null;   // set to override the automatic card-background blend
+    $inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
+
+    $text ??= \JamesGifford\Hold\Support\ColorTheme::textFor($bg);
+    $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text);
+    $inputBg ??= $bg;
+
+    /*
      * ── Copy ─────────────────────────────────────────────────────────────────
      * Edit this page's text here. Every user-visible string lives in this block,
      * including both form-state messages ('success' after a signup, 'invalid'
@@ -66,16 +96,20 @@
          * from them, so a basic reskin is a three-line change.
          */
         :root {
-            --hold-bg: #f5f6f8;
-            --hold-card-bg: #ffffff;
-            --hold-text: #1a1d24;
-            --hold-accent: #2563eb;
-
-            /* The email field's fill. Defaults to the same color as --hold-bg
-               (so the field reads as a cutout showing the page behind the
-               card) but is its own variable — change --hold-bg for the page
-               background alone without also recoloring the input. */
-            --hold-input-bg: #f5f6f8;
+            /*
+             * These five are set from the PHP variables in the Palette
+             * section at the top of this file, not hand-edited here —
+             * editing a value on this line directly has no effect, since
+             * Blade re-interpolates it from PHP on every render. Edit
+             * $bg / $accent above; --hold-text / --hold-card-bg /
+             * --hold-input-bg recompute from $bg automatically unless you
+             * set $text / $cardBg / $inputBg above.
+             */
+            --hold-bg: {{ $bg }};
+            --hold-card-bg: {{ $cardBg }};
+            --hold-text: {{ $text }};
+            --hold-accent: {{ $accent }};
+            --hold-input-bg: {{ $inputBg }};
 
             /* Reading width: ~60-70 characters per line at the base font
                size, not an arbitrary pixel value — keeps prose comfortable

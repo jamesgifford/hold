@@ -475,22 +475,47 @@ edit `maintenance.blade.php`, not the shim.)
 
 The prelaunch and maintenance pages are self-contained single Blade files with
 inline CSS and **no build step** — they render even when your app is half-broken.
-**Colors** are five CSS custom properties at the top for a quick reskin:
+**Colors** are set from PHP variables at the top of the file (the Palette
+section of the `@php` block), the same pattern the email templates already
+use — not CSS literals, because picking a readable text color for an
+arbitrary background needs real branching logic (compare WCAG contrast
+against a light and a dark candidate, keep whichever is higher), and there's
+no broadly-supported CSS function that can do that yet:
 
-```css
-:root {
-    --hold-bg: #f5f6f8;
-    --hold-card-bg: #ffffff;
-    --hold-text: #1a1d24;
-    --hold-accent: #2563eb;
-    --hold-input-bg: #f5f6f8;
-}
+```php
+$bg = '#f5f6f8';
+$accent = '#2563eb';
+
+$text = null;     // set to override the automatic light/dark derivation
+$cardBg = null;   // set to override the automatic card-background blend
+$inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
 ```
 
-`--hold-input-bg` (the email field's fill) defaults to the same value as
-`--hold-bg`, so the field reads as a cutout showing the page behind the card —
-but it's its own variable. Change `--hold-bg` alone to reskin the page
-background without also recoloring the input.
+Set `$bg` and `$accent` and the rest **derive automatically**: `$text`
+switches between a dark and a light default depending on which gives better
+contrast against `$bg` (so a dark `$bg` gets light text, not just a repaint
+of the light-mode default); `$cardBg` is a subtle blend of `$bg` toward
+`$text`, so the card reads as a distinct surface in both a light and a dark
+theme; `$inputBg` defaults to `$bg` exactly, so the email field still reads
+as a cutout showing the page behind the card. These five land in `:root {}`
+as the same `--hold-bg` / `--hold-card-bg` / `--hold-text` / `--hold-accent`
+/ `--hold-input-bg` custom properties every rule in the stylesheet already
+reads — editing them there directly has no effect, since Blade re-writes
+them from the PHP variables on every render.
+
+**Full manual control is never lost.** `$bg` and `$accent` were always plain,
+independently-set values — never derived. `$text`, `$cardBg`, and `$inputBg`
+each default to `null` ("derive automatically"); set any one of them to a
+real hex value instead and that value wins outright, no derivation runs for
+that property — a per-property escape hatch, not an all-or-nothing toggle.
+`--hold-accent` in particular is **never** derived from `--hold-bg`, by
+design: it also colors the submit button, whose label is fixed white text,
+so pick one that reads well as a background on its own regardless of the
+page's own light/dark direction.
+
+The color math itself lives in `JamesGifford\Hold\Support\ColorTheme` (WCAG
+relative luminance and contrast ratio, plus a simple per-channel blend) —
+plain, framework-free PHP, unit tested independently of the templates.
 
 **Layout** is two more custom properties alongside the color knobs:
 `--hold-content-width` (default `65ch`) sets the card's max-width in reading

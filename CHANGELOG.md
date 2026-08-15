@@ -5,6 +5,31 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-15
+
+### Added
+
+- **Holding pages auto-adapt to `$bg`.** Set `$bg` (and `$accent`,
+  independently) at the top of `prelaunch.blade.php` /
+  `maintenance.blade.php` and `$text` / `$cardBg` / `$inputBg` now derive
+  automatically — including switching to light text for a dark background,
+  computed via WCAG contrast (`JamesGifford\Hold\Support\ColorTheme`). Set
+  any of the three directly for full manual control of just that one value;
+  `$bg` and `$accent` were already, and remain, always independently set.
+
+### Changed
+
+- **`--hold-card-bg`'s shipped default** is now computed (a blend of `$bg`
+  toward `$text`, weight 0.12) rather than a hardcoded `#ffffff` literal —
+  visually a subtle shift (`#dbdcdf` at the default palette). Set
+  `$cardBg = '#ffffff';` to keep the previous exact value.
+- **Page colors moved from CSS custom-property literals to PHP variables**
+  at the top of the file, matching the email templates' existing pattern —
+  necessary because the light/dark text decision needs real branching logic
+  no broadly-supported CSS function can do yet. The five `--hold-*` custom
+  properties still exist and every other CSS rule still reads them
+  unchanged; only where their values come from has moved.
+
 ## [1.2.1] - 2026-08-15
 
 ### Fixed
@@ -264,7 +289,8 @@ launch/restore announcement notifications.
 - Documented config covering routes, prelaunch, notifications (including announcement subjects), mail from-address override, spam protection, and model resolution / publish location.
 - A shipped Laravel Boost skill documenting the package's modes, commands, and customization surface.
 
-[1.2.1]: https://github.com/jamesgifford/hold/compare/v1.2.0...HEAD
+[1.3.0]: https://github.com/jamesgifford/hold/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/jamesgifford/hold/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jamesgifford/hold/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/jamesgifford/hold/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/jamesgifford/hold/releases/tag/v1.0.0
