@@ -44,3 +44,41 @@ it('derives a card background distinct from both the background and the text', f
 it('derives the documented default card background at the default blend weight', function () {
     expect(ColorTheme::cardBackground('#f5f6f8', '#1a1d24'))->toBe('#dbdcdf');
 });
+
+it('round-trips a fully saturated hue through RGB -> HSL -> RGB', function () {
+    expect(ColorTheme::toHsl('#ff0000'))->toBe([0.0, 1.0, 0.5]);
+    expect(ColorTheme::fromHsl(0.0, 1.0, 0.5))->toBe('#ff0000');
+});
+
+it('converts HSL back to hex via the standard hue2rgb reconstruction', function () {
+    expect(ColorTheme::fromHsl(210.0, 0.5, 0.4))->toBe('#336699');
+    expect(ColorTheme::fromHsl(0.0, 0.0, 0.5))->toBe('#808080');
+});
+
+it('falls back to a fixed hue for near-gray backgrounds instead of trusting a noisy extracted hue', function () {
+    $fallback = ColorTheme::accentFor('#f5f6f8');
+
+    expect(ColorTheme::accentFor('#f6f5f4'))->toBe($fallback);
+    expect(ColorTheme::accentFor('#f4f7f9'))->toBe($fallback);
+});
+
+it('derives an accent that shares a saturated background\'s hue', function () {
+    [$bgHue] = ColorTheme::toHsl('#4ba69d');
+    [$accentHue] = ColorTheme::toHsl(ColorTheme::accentFor('#4ba69d'));
+
+    expect(abs($accentHue - $bgHue))->toBeLessThan(1.0);
+});
+
+it('always clears the WCAG contrast target against white, across the hue wheel', function () {
+    foreach (range(0, 345, 15) as $hue) {
+        $bg = ColorTheme::fromHsl((float) $hue, 0.5, 0.5);
+        $accent = ColorTheme::accentFor($bg);
+
+        expect(ColorTheme::contrastRatio($accent, '#ffffff'))
+            ->toBeGreaterThanOrEqual(ColorTheme::ACCENT_MIN_CONTRAST);
+    }
+});
+
+it('derives the documented default accent at the low-chroma fallback hue', function () {
+    expect(ColorTheme::accentFor('#f5f6f8'))->toBe('#2a5bc6');
+});

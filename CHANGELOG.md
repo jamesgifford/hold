@@ -9,14 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Holding pages auto-adapt to `$bg`.** Set `$bg` (and `$accent`,
-  independently) at the top of `prelaunch.blade.php` /
-  `maintenance.blade.php` and `$text` / `$cardBg` / `$inputBg` now derive
-  automatically — including switching to light text for a dark background,
-  computed via WCAG contrast (`JamesGifford\Hold\Support\ColorTheme`). Set
-  any of the three directly for full manual control of just that one value;
-  `$bg` and `$accent` were already, and remain, always independently set.
-  A new `$cardBlendWeight` variable (default
+- **Holding pages auto-adapt to `$bg`.** Set `$bg` at the top of
+  `prelaunch.blade.php` / `maintenance.blade.php` and `$accent`, `$text`,
+  `$cardBg`, and `$inputBg` now all derive automatically — a hue-matched
+  accent (so the button/eyebrow/focus-ring color can't clash with `$bg`),
+  darkened as needed to stay legible on the submit button's fixed white
+  label, plus switching to light text for a dark background — computed via
+  WCAG contrast and HSL hue matching (`JamesGifford\Hold\Support\ColorTheme`).
+  Set any of the four directly for full manual control of just that one
+  value. A new `$cardBlendWeight` variable (default
   `ColorTheme::CARD_BLEND_WEIGHT`, `0.12`) tunes how strongly the
   auto-derived `$cardBg` departs from `$bg`.
 
@@ -26,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   toward `$text`, weight 0.12) rather than a hardcoded `#ffffff` literal —
   visually a subtle shift (`#dbdcdf` at the default palette). Set
   `$cardBg = '#ffffff';` to keep the previous exact value.
+- **`--hold-accent`'s shipped default** is now computed too (hue-matched to
+  `$bg`, at a fixed vibrant saturation/lightness, darkened until it clears
+  WCAG 4.5:1 contrast against white) rather than the previous hardcoded
+  `#2563eb` literal — a subtle shift to `#2a5bc6` at the default palette
+  (same blue family). Set `$accent = '#2563eb';` to keep the previous
+  exact value.
 - **Page colors moved from CSS custom-property literals to PHP variables**
   at the top of the file, matching the email templates' existing pattern —
   necessary because the light/dark text decision needs real branching logic

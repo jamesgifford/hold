@@ -17,26 +17,26 @@
 
     /*
      * ── Palette ─────────────────────────────────────────────────────────────
-     * Set $bg and $accent to reskin — $text, $cardBg, and $inputBg derive
-     * automatically from $bg (including switching to light text on a dark
-     * background), so a basic reskin is a two-line change. Set any of the
-     * three directly below (null means auto-derive, a real value wins
-     * outright) to take manual control of just that one value instead.
+     * Set $bg to reskin — $accent, $text, $cardBg, and $inputBg all derive
+     * automatically from it (a hue-matched accent so the button/eyebrow/
+     * focus-ring color can't clash with $bg, plus switching to light text
+     * on a dark background), so a basic reskin is a one-line change. Set
+     * any of the four directly below (null means auto-derive, a real value
+     * wins outright) to take manual control of just that one value instead.
      *
      * Plain PHP variables here, not literals inside the <style> block below,
      * like the mail templates' palette: picking a readable text color for an
      * arbitrary $bg needs real branching logic (compare WCAG contrast
-     * against a light and a dark candidate, keep the higher), and there's no
-     * broadly-supported CSS function that can do that yet — see
-     * JamesGifford\Hold\Support\ColorTheme for the actual math.
-     *
-     * $accent is NOT derived from $bg — it also colors the submit button,
-     * whose label is fixed white text, so pick one that reads well as a
-     * background on its own.
+     * against a light and a dark candidate, keep the higher), and deriving
+     * a good accent needs even more (match $bg's hue, then darken it until
+     * it clears WCAG contrast against the submit button's fixed white
+     * label) — there's no broadly-supported CSS function that can do
+     * either yet — see JamesGifford\Hold\Support\ColorTheme for the actual
+     * math.
      */
     $bg = '#f5f6f8';
-    $accent = '#2563eb';
 
+    $accent = null;   // set to override the automatic hue-matched derivation
     $text = null;     // set to override the automatic light/dark derivation
     $cardBg = null;   // set to override the automatic card-background blend
     $inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
@@ -46,6 +46,7 @@
     // while $cardBg above is left null — has no effect once you set it.
     $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;
 
+    $accent ??= \JamesGifford\Hold\Support\ColorTheme::accentFor($bg);
     $text ??= \JamesGifford\Hold\Support\ColorTheme::textFor($bg);
     $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text, $cardBlendWeight);
     $inputBg ??= $bg;
@@ -111,18 +112,18 @@
     <style>
         /*
          * ── Palette ────────────────────────────────────────────────────────────
-         * Edit these four values to match your brand. Everything below derives
-         * from them, so a basic reskin is a three-line change.
+         * Edit $bg above to match your brand — everything below derives from
+         * it automatically, so a basic reskin is a one-line change.
          */
         :root {
             /*
              * These five are set from the PHP variables in the Palette
              * section at the top of this file, not hand-edited here —
              * editing a value on this line directly has no effect, since
-             * Blade re-interpolates it from PHP on every render. Edit
-             * $bg / $accent above; --hold-text / --hold-card-bg /
-             * --hold-input-bg recompute from $bg automatically unless you
-             * set $text / $cardBg / $inputBg above.
+             * Blade re-interpolates it from PHP on every render. Edit $bg
+             * above; --hold-accent / --hold-text / --hold-card-bg /
+             * --hold-input-bg all recompute from it automatically unless
+             * you set $accent / $text / $cardBg / $inputBg above.
              */
             --hold-bg: {{ $bg }};
             --hold-card-bg: {{ $cardBg }};

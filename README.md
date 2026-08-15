@@ -479,13 +479,16 @@ inline CSS and **no build step** — they render even when your app is half-brok
 section of the `@php` block), the same pattern the email templates already
 use — not CSS literals, because picking a readable text color for an
 arbitrary background needs real branching logic (compare WCAG contrast
-against a light and a dark candidate, keep whichever is higher), and there's
-no broadly-supported CSS function that can do that yet:
+against a light and a dark candidate, keep whichever is higher), and
+deriving a good accent needs even more (match the background's hue, then
+darken it until it clears WCAG contrast against the submit button's fixed
+white label) — there's no broadly-supported CSS function that can do either
+yet:
 
 ```php
 $bg = '#f5f6f8';
-$accent = '#2563eb';
 
+$accent = null;   // set to override the automatic hue-matched derivation
 $text = null;     // set to override the automatic light/dark derivation
 $cardBg = null;   // set to override the automatic card-background blend
 $inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
@@ -495,7 +498,11 @@ $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;
 //   Only applies while $cardBg above is left null.
 ```
 
-Set `$bg` and `$accent` and the rest **derive automatically**: `$text`
+Set `$bg` and the rest **derive automatically**: `$accent` matches `$bg`'s
+hue at a fixed, deliberately vibrant saturation/lightness, darkened as
+needed so it stays legible on the submit button's fixed white label
+(`JamesGifford\Hold\Support\ColorTheme::accentFor()`) — so it can't clash
+with `$bg` the way an unrelated, independently-chosen color can; `$text`
 switches between a dark and a light default depending on which gives better
 contrast against `$bg` (so a dark `$bg` gets light text, not just a repaint
 of the light-mode default); `$cardBg` is a subtle blend of `$bg` toward
@@ -513,19 +520,16 @@ raise it for a more visibly distinct card, lower it to sit closer to `$bg`.
 It's read only while `$cardBg` is left to auto-derive — set `$cardBg`
 directly and this has no effect.
 
-**Full manual control is never lost.** `$bg` and `$accent` were always plain,
-independently-set values — never derived. `$text`, `$cardBg`, and `$inputBg`
-each default to `null` ("derive automatically"); set any one of them to a
-real hex value instead and that value wins outright, no derivation runs for
-that property — a per-property escape hatch, not an all-or-nothing toggle.
-`--hold-accent` in particular is **never** derived from `--hold-bg`, by
-design: it also colors the submit button, whose label is fixed white text,
-so pick one that reads well as a background on its own regardless of the
-page's own light/dark direction.
+**Full manual control is never lost.** `$bg` is a plain, independently-set
+value. `$accent`, `$text`, `$cardBg`, and `$inputBg` each default to `null`
+("derive automatically"); set any one of them to a real hex value instead
+and that value wins outright, no derivation runs for that property — a
+per-property escape hatch, not an all-or-nothing toggle.
 
 The color math itself lives in `JamesGifford\Hold\Support\ColorTheme` (WCAG
-relative luminance and contrast ratio, plus a simple per-channel blend) —
-plain, framework-free PHP, unit tested independently of the templates.
+relative luminance and contrast ratio, HSL hue extraction/reconstruction for
+the accent, plus a simple per-channel blend for the card) — plain,
+framework-free PHP, unit tested independently of the templates.
 
 **Layout** is two more custom properties alongside the color knobs:
 `--hold-content-width` (default `65ch`) sets the card's max-width in reading
