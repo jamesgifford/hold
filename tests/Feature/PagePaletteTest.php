@@ -84,7 +84,7 @@ it('derives --hold-accent the same way regardless of $text/$cardBg/$inputBg over
 it('lets $cardBlendWeight tune how strongly the card tints toward $text', function () {
     foreach (['prelaunch', 'maintenance'] as $view) {
         publishEditedPage($view, [
-            '$cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;' => '$cardBlendWeight = 0.5;',
+            '$cardBlendWeight = $colorTheme::CARD_BLEND_WEIGHT;' => '$cardBlendWeight = 0.5;',
         ]);
 
         $expected = ColorTheme::cardBackground('#f5f6f8', '#1a1d24', 0.5);

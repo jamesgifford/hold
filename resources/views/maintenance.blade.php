@@ -1,4 +1,6 @@
 @php
+    $colorTheme = \JamesGifford\Hold\Support\ColorTheme::class;
+
     /*
      * ── Palette ─────────────────────────────────────────────────────────────
      * Set $bg to reskin — everything below derives from it automatically.
@@ -16,23 +18,23 @@
     $alertSuccessText = null;  // set to override the automatic success-alert text derivation
     $alertErrorBg = null;      // set to override the automatic error-alert background blend
     $alertErrorText = null;    // set to override the automatic error-alert text derivation
-    $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT; // 0-1; how strongly $cardBg blends toward $text
+    $cardBlendWeight = $colorTheme::CARD_BLEND_WEIGHT; // 0-1; how strongly $cardBg blends toward $text
 
     // Derive anything left null above from $bg:
-    $accent ??= \JamesGifford\Hold\Support\ColorTheme::accentFor($bg);
-    $text ??= \JamesGifford\Hold\Support\ColorTheme::textFor($bg);
-    $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text, $cardBlendWeight);
+    $accent ??= $colorTheme::accentFor($bg);
+    $text ??= $colorTheme::textFor($bg);
+    $cardBg ??= $colorTheme::cardBackground($bg, $text, $cardBlendWeight);
     $inputBg ??= $bg;
-    $inputBorder ??= \JamesGifford\Hold\Support\ColorTheme::blend($inputBg, $text, \JamesGifford\Hold\Support\ColorTheme::INPUT_BORDER_BLEND_WEIGHT);
-    $cardShadowColor ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($bg, '#000000', '#ffffff');
-    $cardShadowRgb = implode(', ', \JamesGifford\Hold\Support\ColorTheme::toRgb($cardShadowColor));
+    $inputBorder ??= $colorTheme::blend($inputBg, $text, $colorTheme::INPUT_BORDER_BLEND_WEIGHT);
+    $cardShadowColor ??= $colorTheme::betterContrast($bg, '#000000', '#ffffff');
+    $cardShadowRgb = implode(', ', $colorTheme::toRgb($cardShadowColor));
 
     // Alerts tint $cardBg, not $bg — the alert renders inside the card, so
     // $cardBg is its real backdrop.
-    $alertSuccessBg ??= \JamesGifford\Hold\Support\ColorTheme::blend($cardBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TINT, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_BLEND_WEIGHT);
-    $alertSuccessText ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($alertSuccessBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TEXT_LIGHT, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TEXT_DARK);
-    $alertErrorBg ??= \JamesGifford\Hold\Support\ColorTheme::blend($cardBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TINT, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_BLEND_WEIGHT);
-    $alertErrorText ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($alertErrorBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TEXT_LIGHT, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TEXT_DARK);
+    $alertSuccessBg ??= $colorTheme::blend($cardBg, $colorTheme::ALERT_SUCCESS_TINT, $colorTheme::ALERT_SUCCESS_BLEND_WEIGHT);
+    $alertSuccessText ??= $colorTheme::betterContrast($alertSuccessBg, $colorTheme::ALERT_SUCCESS_TEXT_LIGHT, $colorTheme::ALERT_SUCCESS_TEXT_DARK);
+    $alertErrorBg ??= $colorTheme::blend($cardBg, $colorTheme::ALERT_ERROR_TINT, $colorTheme::ALERT_ERROR_BLEND_WEIGHT);
+    $alertErrorText ??= $colorTheme::betterContrast($alertErrorBg, $colorTheme::ALERT_ERROR_TEXT_LIGHT, $colorTheme::ALERT_ERROR_TEXT_DARK);
 
     /*
      * ── Copy ─────────────────────────────────────────────────────────────────
