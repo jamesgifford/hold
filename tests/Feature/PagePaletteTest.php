@@ -55,6 +55,18 @@ it('does not derive --hold-accent from the background', function () {
     }
 });
 
+it('lets $cardBlendWeight tune how strongly the card tints toward $text', function () {
+    foreach (['prelaunch', 'maintenance'] as $view) {
+        publishEditedPage($view, [
+            '$cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;' => '$cardBlendWeight = 0.5;',
+        ]);
+
+        $expected = ColorTheme::cardBackground('#f5f6f8', '#1a1d24', 0.5);
+
+        expect(holdRender("hold::{$view}"))->toContain("--hold-card-bg: {$expected};");
+    }
+});
+
 it('lets an explicit $text override bypass the derivation', function () {
     foreach (['prelaunch', 'maintenance'] as $view) {
         publishEditedPage($view, [

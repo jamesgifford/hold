@@ -489,6 +489,10 @@ $accent = '#2563eb';
 $text = null;     // set to override the automatic light/dark derivation
 $cardBg = null;   // set to override the automatic card-background blend
 $inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
+
+$cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;
+// ^ 0-1; how strongly $cardBg blends toward $text when auto-deriving.
+//   Only applies while $cardBg above is left null.
 ```
 
 Set `$bg` and `$accent` and the rest **derive automatically**: `$text`
@@ -502,6 +506,12 @@ as the same `--hold-bg` / `--hold-card-bg` / `--hold-text` / `--hold-accent`
 / `--hold-input-bg` custom properties every rule in the stylesheet already
 reads — editing them there directly has no effect, since Blade re-writes
 them from the PHP variables on every render.
+
+`$cardBlendWeight` tunes *how strongly* `$cardBg` departs from `$bg` — the
+default (`ColorTheme::CARD_BLEND_WEIGHT`, `0.12`) is deliberately subtle;
+raise it for a more visibly distinct card, lower it to sit closer to `$bg`.
+It's read only while `$cardBg` is left to auto-derive — set `$cardBg`
+directly and this has no effect.
 
 **Full manual control is never lost.** `$bg` and `$accent` were always plain,
 independently-set values — never derived. `$text`, `$cardBg`, and `$inputBg`

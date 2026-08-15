@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   computed via WCAG contrast (`JamesGifford\Hold\Support\ColorTheme`). Set
   any of the three directly for full manual control of just that one value;
   `$bg` and `$accent` were already, and remain, always independently set.
+  A new `$cardBlendWeight` variable (default
+  `ColorTheme::CARD_BLEND_WEIGHT`, `0.12`) tunes how strongly the
+  auto-derived `$cardBg` departs from `$bg`.
 
 ### Changed
 

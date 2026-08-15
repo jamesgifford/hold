@@ -43,8 +43,13 @@
     $cardBg = null;   // set to override the automatic card-background blend
     $inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
 
+    // How strongly $cardBg blends toward $text when auto-deriving (0-1;
+    // higher = the card visibly departs further from $bg). Only applies
+    // while $cardBg above is left null — has no effect once you set it.
+    $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;
+
     $text ??= \JamesGifford\Hold\Support\ColorTheme::textFor($bg);
-    $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text);
+    $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text, $cardBlendWeight);
     $inputBg ??= $bg;
 
     /*

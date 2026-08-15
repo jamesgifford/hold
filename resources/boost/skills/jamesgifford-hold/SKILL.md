@@ -124,8 +124,9 @@ Published to `config/jamesgifford/hold.php`:
   `$accent`) at the top of the file; `$text`, `$cardBg`, and `$inputBg`
   derive automatically from `$bg` via `JamesGifford\Hold\Support\ColorTheme`
   (WCAG contrast picks light or dark text; the card background is a blend of
-  `$bg` toward `$text`) unless set directly, per-property, to override. Never
-  derived: `$accent`, since it also colors the submit button's fixed-white-
+  `$bg` toward `$text`, strength tunable via `$cardBlendWeight`) unless set
+  directly, per-property, to override. Never derived: `$accent`, since it
+  also colors the submit button's fixed-white-
   text background. Every user-visible string (incl. the `?hold=`
   success/error messages) is set via the `$copy` block, same top-of-file
   area (the `errors/503.blade.php` shim just includes the maintenance view).
