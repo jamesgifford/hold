@@ -47,6 +47,20 @@ it('drives inter-element spacing from a single spacing variable', function () {
     }
 });
 
+it('gives the email input its own background variable, independent of the page background', function () {
+    foreach (['hold::prelaunch', 'hold::maintenance'] as $view) {
+        $html = holdRender($view);
+
+        preg_match('/\.hold-field input\[type="email"\]\s*\{[^}]*\}/s', $html, $match);
+
+        expect($match)->not->toBeEmpty();
+        expect($match[0])
+            ->toContain('var(--hold-input-bg)')
+            ->not->toContain('var(--hold-bg)');
+        expect($html)->toContain('--hold-input-bg:');
+    }
+});
+
 // --- accessibility ------------------------------------------------------
 
 it('renders exactly one h1 and no headings used purely for styling', function () {

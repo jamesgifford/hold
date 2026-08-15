@@ -120,8 +120,9 @@ Published to `config/jamesgifford/hold.php`:
   Whatever it points at MUST implement `JamesGifford\Hold\Contracts\HoldSignupContract`
   (the published model already does); a class that does not raises an exception.
 - **Holding pages**: edit the published `vendor/hold/prelaunch.blade.php` /
-  `vendor/hold/maintenance.blade.php` — color via the four `--hold-*` CSS custom
-  properties, and every user-visible string (incl. the `?hold=` success/error
+  `vendor/hold/maintenance.blade.php` — color via the five `--hold-*` CSS custom
+  properties (`--hold-input-bg` is independent of `--hold-bg`, not derived from
+  it), and every user-visible string (incl. the `?hold=` success/error
   messages) via the `$copy` block, both at the top of the file (the
   `errors/503.blade.php` shim just includes the maintenance view).
 - **Emails**: setup publishes one self-contained template per email —

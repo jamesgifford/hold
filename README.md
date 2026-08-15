@@ -475,7 +475,7 @@ edit `maintenance.blade.php`, not the shim.)
 
 The prelaunch and maintenance pages are self-contained single Blade files with
 inline CSS and **no build step** — they render even when your app is half-broken.
-**Colors** are four CSS custom properties at the top for a three-line reskin:
+**Colors** are five CSS custom properties at the top for a quick reskin:
 
 ```css
 :root {
@@ -483,8 +483,14 @@ inline CSS and **no build step** — they render even when your app is half-brok
     --hold-card-bg: #ffffff;
     --hold-text: #1a1d24;
     --hold-accent: #2563eb;
+    --hold-input-bg: #f5f6f8;
 }
 ```
+
+`--hold-input-bg` (the email field's fill) defaults to the same value as
+`--hold-bg`, so the field reads as a cutout showing the page behind the card —
+but it's its own variable. Change `--hold-bg` alone to reskin the page
+background without also recoloring the input.
 
 **Layout** is two more custom properties alongside the color knobs:
 `--hold-content-width` (default `65ch`) sets the card's max-width in reading

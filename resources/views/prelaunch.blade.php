@@ -85,6 +85,12 @@
             --hold-text: #1a1d24;
             --hold-accent: #2563eb;
 
+            /* The email field's fill. Defaults to the same color as --hold-bg
+               (so the field reads as a cutout showing the page behind the
+               card) but is its own variable — change --hold-bg for the page
+               background alone without also recoloring the input. */
+            --hold-input-bg: #f5f6f8;
+
             /* Reading width: ~60-70 characters per line at the base font
                size, not an arbitrary pixel value — keeps prose comfortable
                regardless of copy length. */
@@ -171,7 +177,7 @@
             font-size: 1rem;
             border: 1px solid rgba(0, 0, 0, 0.15);
             border-radius: 10px;
-            background: var(--hold-bg);
+            background: var(--hold-input-bg);
             color: var(--hold-text);
         }
 
