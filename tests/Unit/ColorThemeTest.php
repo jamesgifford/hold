@@ -82,3 +82,49 @@ it('always clears the WCAG contrast target against white, across the hue wheel',
 it('derives the documented default accent at the low-chroma fallback hue', function () {
     expect(ColorTheme::accentFor('#f5f6f8'))->toBe('#2a5bc6');
 });
+
+it('returns whichever candidate contrasts more with the background, ties favoring the first', function () {
+    expect(ColorTheme::betterContrast('#f5f6f8', '#1a1d24', '#f5f6f8'))->toBe('#1a1d24');
+    expect(ColorTheme::betterContrast('#111827', '#1a1d24', '#f5f6f8'))->toBe('#f5f6f8');
+    expect(ColorTheme::betterContrast('#123456', '#abcdef', '#abcdef'))->toBe('#abcdef');
+});
+
+it('reimplements textFor() as a pure delegation to betterContrast()', function () {
+    expect(ColorTheme::textFor('#f5f6f8'))
+        ->toBe(ColorTheme::betterContrast('#f5f6f8', ColorTheme::DARK_TEXT, ColorTheme::LIGHT_TEXT));
+    expect(ColorTheme::textFor('#111827'))
+        ->toBe(ColorTheme::betterContrast('#111827', ColorTheme::DARK_TEXT, ColorTheme::LIGHT_TEXT));
+});
+
+it('derives the documented default alert backgrounds via blend() at the shipped default card background', function () {
+    expect(ColorTheme::blend('#dbdcdf', ColorTheme::ALERT_SUCCESS_TINT, ColorTheme::ALERT_SUCCESS_BLEND_WEIGHT))->toBe('#c3d5cd');
+    expect(ColorTheme::blend('#dbdcdf', ColorTheme::ALERT_ERROR_TINT, ColorTheme::ALERT_ERROR_BLEND_WEIGHT))->toBe('#d8c9cc');
+});
+
+it('picks the light-mode alert text against a light alert background and the dark-mode candidate against a dark one', function () {
+    expect(ColorTheme::betterContrast('#c3d5cd', ColorTheme::ALERT_SUCCESS_TEXT_LIGHT, ColorTheme::ALERT_SUCCESS_TEXT_DARK))->toBe(ColorTheme::ALERT_SUCCESS_TEXT_LIGHT);
+    expect(ColorTheme::betterContrast('#294041', ColorTheme::ALERT_SUCCESS_TEXT_LIGHT, ColorTheme::ALERT_SUCCESS_TEXT_DARK))->toBe(ColorTheme::ALERT_SUCCESS_TEXT_DARK);
+    expect(ColorTheme::betterContrast('#d8c9cc', ColorTheme::ALERT_ERROR_TEXT_LIGHT, ColorTheme::ALERT_ERROR_TEXT_DARK))->toBe(ColorTheme::ALERT_ERROR_TEXT_LIGHT);
+    expect(ColorTheme::betterContrast('#3a313c', ColorTheme::ALERT_ERROR_TEXT_LIGHT, ColorTheme::ALERT_ERROR_TEXT_DARK))->toBe(ColorTheme::ALERT_ERROR_TEXT_DARK);
+});
+
+it('clears WCAG AA contrast for the dark-mode alert text candidates against their own alert background', function () {
+    expect(ColorTheme::contrastRatio(ColorTheme::ALERT_SUCCESS_TEXT_DARK, '#294041'))->toBeGreaterThanOrEqual(4.5);
+    expect(ColorTheme::contrastRatio(ColorTheme::ALERT_ERROR_TEXT_DARK, '#3a313c'))->toBeGreaterThanOrEqual(4.5);
+});
+
+it('derives an input border that nearly reproduces the previous hardcoded default at the light palette', function () {
+    expect(ColorTheme::blend('#f5f6f8', ColorTheme::DARK_TEXT, ColorTheme::INPUT_BORDER_BLEND_WEIGHT))->toBe('#d0d1d4');
+});
+
+it('derives a clearly visible input border for a dark input background', function () {
+    $border = ColorTheme::blend('#111827', ColorTheme::LIGHT_TEXT, ColorTheme::INPUT_BORDER_BLEND_WEIGHT);
+
+    expect($border)->toBe('#383e4b');
+    expect(ColorTheme::contrastRatio($border, '#111827'))->toBeGreaterThan(1.5);
+});
+
+it('picks a black shadow for a light background and a white glow for a dark one', function () {
+    expect(ColorTheme::betterContrast('#f5f6f8', '#000000', '#ffffff'))->toBe('#000000');
+    expect(ColorTheme::betterContrast('#111827', '#000000', '#ffffff'))->toBe('#ffffff');
+});

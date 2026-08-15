@@ -121,14 +121,21 @@ Published to `config/jamesgifford/hold.php`:
   (the published model already does); a class that does not raises an exception.
 - **Holding pages**: edit the published `vendor/hold/prelaunch.blade.php` /
   `vendor/hold/maintenance.blade.php` — color via a single PHP variable
-  (`$bg`) at the top of the file; `$accent`, `$text`, `$cardBg`, and
-  `$inputBg` all derive automatically from `$bg` via
-  `JamesGifford\Hold\Support\ColorTheme` (WCAG contrast picks light or dark
-  text; the card background is a blend of `$bg` toward `$text`, strength
-  tunable via `$cardBlendWeight`; the accent matches `$bg`'s hue at a fixed
-  vibrant saturation/lightness, darkened as needed to stay legible on the
-  submit button's fixed white label) unless set directly, per-property, to
-  override. Every user-visible string (incl. the `?hold=` success/error
+  (`$bg`) at the top of the file; `$accent`, `$text`, `$cardBg`, `$inputBg`,
+  `$inputBorder`, `$cardShadowColor`, `$alertSuccessBg`,
+  `$alertSuccessText`, `$alertErrorBg`, and `$alertErrorText` all derive
+  automatically from `$bg` via `JamesGifford\Hold\Support\ColorTheme` (WCAG
+  contrast picks light or dark text; the card background is a blend of
+  `$bg` toward `$text`, strength tunable via `$cardBlendWeight`; the accent
+  matches `$bg`'s hue at a fixed vibrant saturation/lightness, darkened as
+  needed to stay legible on the submit button's fixed white label; the
+  input border blends toward `$text`; the card shadow picks black or white,
+  whichever contrasts more with `$bg`; the alert backgrounds tint `$cardBg`
+  toward a fixed semantic hue, and the alert text picks whichever of a
+  light-/dark-mode candidate contrasts more with that alert background)
+  unless set directly, per-property, to override — each of the ten
+  variables above defaults to `null` (auto-derive) and a real value wins
+  outright. Every user-visible string (incl. the `?hold=` success/error
   messages) is set via the `$copy` block, same top-of-file area (the
   `errors/503.blade.php` shim just includes the maintenance view).
 - **Emails**: setup publishes one self-contained template per email —

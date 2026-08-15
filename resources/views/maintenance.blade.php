@@ -19,11 +19,10 @@
 
     /*
      * ── Palette ─────────────────────────────────────────────────────────────
-     * Set $bg to reskin — $accent, $text, $cardBg, and $inputBg all derive
-     * automatically from it (a hue-matched accent so the button/eyebrow/
-     * focus-ring color can't clash with $bg, plus switching to light text
-     * on a dark background), so a basic reskin is a one-line change. Set
-     * any of the four directly below (null means auto-derive, a real value
+     * Set $bg to reskin — everything else below (accent, text, card
+     * background, input fill/border, alert colors, card shadow) derives
+     * automatically from it, so a basic reskin is a one-line change. Set
+     * any variable below directly (null means auto-derive, a real value
      * wins outright) to take manual control of just that one value instead.
      *
      * Plain PHP variables here, not literals inside the <style> block below,
@@ -38,10 +37,16 @@
      */
     $bg = '#f5f6f8';
 
-    $accent = null;   // set to override the automatic hue-matched derivation
-    $text = null;     // set to override the automatic light/dark derivation
-    $cardBg = null;   // set to override the automatic card-background blend
-    $inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
+    $accent = null;            // set to override the automatic hue-matched derivation
+    $text = null;              // set to override the automatic light/dark derivation
+    $cardBg = null;            // set to override the automatic card-background blend
+    $inputBg = null;           // set to override; defaults to $bg (the "cutout" look)
+    $inputBorder = null;       // set to override the automatic border-color blend
+    $cardShadowColor = null;   // set to override the automatic light-shadow/dark-glow choice
+    $alertSuccessBg = null;    // set to override the automatic success-alert background blend
+    $alertSuccessText = null;  // set to override the automatic success-alert text derivation
+    $alertErrorBg = null;      // set to override the automatic error-alert background blend
+    $alertErrorText = null;    // set to override the automatic error-alert text derivation
 
     // How strongly $cardBg blends toward $text when auto-deriving (0-1;
     // higher = the card visibly departs further from $bg). Only applies
@@ -52,6 +57,25 @@
     $text ??= \JamesGifford\Hold\Support\ColorTheme::textFor($bg);
     $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text, $cardBlendWeight);
     $inputBg ??= $bg;
+
+    // Blends toward $text, not a fixed literal — the same "blend toward
+    // text" trick cardBackground() uses — so the border stays a subtle
+    // edge on a light $inputBg and a clearly visible one on a dark one.
+    $inputBorder ??= \JamesGifford\Hold\Support\ColorTheme::blend($inputBg, $text, \JamesGifford\Hold\Support\ColorTheme::INPUT_BORDER_BLEND_WEIGHT);
+
+    // Whichever of pure black/white contrasts more with $bg — a dark $bg
+    // gets a light "glow" instead of an invisible black-on-black shadow.
+    $cardShadowColor ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($bg, '#000000', '#ffffff');
+    $cardShadowRgb = implode(', ', \JamesGifford\Hold\Support\ColorTheme::toRgb($cardShadowColor));
+
+    // Each alert tints $cardBg (not $bg) toward a fixed semantic hue — the
+    // alert renders inside the card, so $cardBg is its real backdrop —
+    // then picks whichever of a light-mode/dark-mode text candidate
+    // contrasts more with that actual composited background.
+    $alertSuccessBg ??= \JamesGifford\Hold\Support\ColorTheme::blend($cardBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TINT, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_BLEND_WEIGHT);
+    $alertSuccessText ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($alertSuccessBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TEXT_LIGHT, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TEXT_DARK);
+    $alertErrorBg ??= \JamesGifford\Hold\Support\ColorTheme::blend($cardBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TINT, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_BLEND_WEIGHT);
+    $alertErrorText ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($alertErrorBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TEXT_LIGHT, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TEXT_DARK);
 
     /*
      * ── Copy ─────────────────────────────────────────────────────────────────
@@ -103,19 +127,24 @@
          */
         :root {
             /*
-             * These five are set from the PHP variables in the Palette
-             * section at the top of this file, not hand-edited here —
-             * editing a value on this line directly has no effect, since
-             * Blade re-interpolates it from PHP on every render. Edit $bg
-             * above; --hold-accent / --hold-text / --hold-card-bg /
-             * --hold-input-bg all recompute from it automatically unless
-             * you set $accent / $text / $cardBg / $inputBg above.
+             * These are set from the PHP variables in the Palette section
+             * at the top of this file, not hand-edited here — editing a
+             * value on this line directly has no effect, since Blade
+             * re-interpolates it from PHP on every render. Edit $bg above;
+             * everything else recomputes from it automatically unless you
+             * set its own variable above.
              */
             --hold-bg: {{ $bg }};
             --hold-card-bg: {{ $cardBg }};
             --hold-text: {{ $text }};
             --hold-accent: {{ $accent }};
             --hold-input-bg: {{ $inputBg }};
+            --hold-input-border: {{ $inputBorder }};
+            --hold-card-shadow-color: {{ $cardShadowRgb }};
+            --hold-alert-success-bg: {{ $alertSuccessBg }};
+            --hold-alert-success-text: {{ $alertSuccessText }};
+            --hold-alert-error-bg: {{ $alertErrorBg }};
+            --hold-alert-error-text: {{ $alertErrorText }};
 
             /* Reading width: ~60-70 characters per line at the base font
                size, not an arbitrary pixel value — keeps prose comfortable
@@ -150,7 +179,7 @@
             background: var(--hold-card-bg);
             border-radius: 16px;
             padding: 2.5rem 2rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 10px 40px rgba(var(--hold-card-shadow-color), 0.08);
             text-align: center;
         }
 
@@ -214,7 +243,7 @@
             width: 100%;
             padding: 0.85rem 1rem;
             font-size: 1rem;
-            border: 1px solid rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--hold-input-border);
             border-radius: 10px;
             background: var(--hold-input-bg);
             color: var(--hold-text);
@@ -260,13 +289,13 @@
         }
 
         .hold-alert--success {
-            background: rgba(22, 163, 74, 0.12);
-            color: #15803d;
+            background: var(--hold-alert-success-bg);
+            color: var(--hold-alert-success-text);
         }
 
         .hold-alert--error {
-            background: rgba(185, 28, 28, 0.1);
-            color: #b91c1c;
+            background: var(--hold-alert-error-bg);
+            color: var(--hold-alert-error-text);
         }
     </style>
 </head>

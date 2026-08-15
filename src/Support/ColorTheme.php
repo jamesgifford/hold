@@ -74,6 +74,66 @@ final class ColorTheme
     public const ACCENT_FALLBACK_HUE = 221.21;
 
     /**
+     * Semantic hues the two alert states blend $cardBg toward (not $bg
+     * directly — the alert renders inside the card, so $cardBg is its real
+     * backdrop). Chosen to match this file's own pre-existing rgba() tints
+     * hue-for-hue (Tailwind green-600 / red-700), so switching from an
+     * alpha overlay to a resolved blend() does not shift the shipped
+     * default on its own.
+     */
+    public const ALERT_SUCCESS_TINT = '#16a34a';
+
+    public const ALERT_ERROR_TINT = '#b91c1c';
+
+    /**
+     * Blend weight for each alert's background — deliberately the exact
+     * alpha its previous rgba() overlay used (0.12 / 0.10). blend() toward
+     * a color at weight W is the same math as compositing that color at
+     * alpha W over an opaque backdrop, so this reproduces today's shipped
+     * pixels exactly. Raising this weight was investigated and rejected:
+     * it barely moves the alert-vs-card contrast ratio (1.15 -> 1.6 even
+     * at 0.30), because "reads as tinted" is a hue effect the
+     * contrast-ratio formula doesn't capture — the actual dark-background
+     * fix is in the TEXT, not the background.
+     */
+    public const ALERT_SUCCESS_BLEND_WEIGHT = 0.12;
+
+    public const ALERT_ERROR_BLEND_WEIGHT = 0.10;
+
+    /**
+     * Alert text candidates, compared via betterContrast() against the
+     * alert's own composited background — not $cardBg or $bg directly,
+     * since that isn't what the text actually sits on. The *_LIGHT
+     * candidates are this file's pre-existing hardcoded text colors
+     * (Tailwind green-700 / red-700), kept exactly so the default
+     * palette's alert text doesn't move. The *_DARK candidates (Tailwind
+     * green-200/red-200) are validated to clear WCAG AA (4.5:1) against
+     * every realistic dark-$bg fixture tested. Like textFor(), this is
+     * not a guarantee for every conceivable $bg — an unusual
+     * medium-lightness, non-gray hue can still land both candidates below
+     * target, the same accepted limitation textFor() itself has (worst
+     * case ~3.97:1 swept across the hue wheel).
+     */
+    public const ALERT_SUCCESS_TEXT_LIGHT = '#15803d';
+
+    public const ALERT_SUCCESS_TEXT_DARK = '#bbf7d0';
+
+    public const ALERT_ERROR_TEXT_LIGHT = '#b91c1c';
+
+    public const ALERT_ERROR_TEXT_DARK = '#fecaca';
+
+    /**
+     * Blend weight for the email field's border, toward the already
+     * correctly light-or-dark $text (not a fixed black, unlike the
+     * previous literal rgba(0, 0, 0, 0.15)). Reproduces the light-palette
+     * default almost exactly (#d0d1d4 vs. the old #d0d1d3 — a single
+     * 8-bit rounding unit) while producing a clearly visible border for a
+     * dark $inputBg, where the old black-based literal was nearly
+     * invisible (~1.04 contrast against its own backdrop).
+     */
+    public const INPUT_BORDER_BLEND_WEIGHT = 0.17;
+
+    /**
      * Bisection iteration count for accentAtHue()'s lightness search. 20
      * halvings of an at-most-1.0-wide interval converge to well under
      * 1e-6 — far finer than 8-bit hex rounding can even represent — so a
@@ -88,10 +148,32 @@ final class ColorTheme
      */
     public static function textFor(string $bg): string
     {
-        $darkContrast = self::contrastRatio($bg, self::DARK_TEXT);
-        $lightContrast = self::contrastRatio($bg, self::LIGHT_TEXT);
+        return self::betterContrast($bg, self::DARK_TEXT, self::LIGHT_TEXT);
+    }
 
-        return $lightContrast > $darkContrast ? self::LIGHT_TEXT : self::DARK_TEXT;
+    /**
+     * Whichever of two candidate colors contrasts more with $bg, by WCAG
+     * contrast ratio; ties favor $candidateA. Extracted from textFor()'s
+     * own two-candidate comparison so the same "best of two named
+     * candidates" shape can drive other binary light/dark choices (the
+     * alert text colors, the shadow's black/white base) without
+     * re-deriving the comparison logic — and so those choices don't need
+     * to guess $bg's "light or dark" via an ad hoc luminance threshold
+     * (the naive 0.5 cutoff is actually wrong here: contrast-against-black
+     * overtakes contrast-against-white at relative luminance ≈0.179, not
+     * 0.5 — this sidesteps needing to know that).
+     *
+     * Like textFor(), this picks the better of two NAMED candidates, not a
+     * value guaranteed to clear any particular contrast target — pair it
+     * with candidates already validated for your use case (see the
+     * ALERT_*_TEXT_* constants) rather than assuming an arbitrary pair
+     * always reaches WCAG AA.
+     */
+    public static function betterContrast(string $bg, string $candidateA, string $candidateB): string
+    {
+        return self::contrastRatio($bg, $candidateB) > self::contrastRatio($bg, $candidateA)
+            ? $candidateB
+            : $candidateA;
     }
 
     /**

@@ -20,6 +20,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   value. A new `$cardBlendWeight` variable (default
   `ColorTheme::CARD_BLEND_WEIGHT`, `0.12`) tunes how strongly the
   auto-derived `$cardBg` departs from `$bg`.
+- **Alert colors, the email input's border, and the card's shadow now also
+  adapt to `$bg`.** Previously hardcoded assuming a light theme, these broke
+  outright on a dark `$bg` — the alert text could drop as low as ~1.9:1
+  contrast against its own background, and the border/shadow were nearly
+  invisible. `$alertSuccessBg`/`$alertSuccessText`/`$alertErrorBg`/
+  `$alertErrorText` now tint `$cardBg` toward a fixed semantic hue and pick
+  a light-/dark-mode text candidate by WCAG contrast; `$inputBorder` blends
+  toward `$text` instead of a fixed black; `$cardShadowColor` picks black or
+  white, whichever contrasts more with `$bg`. All six are new PHP
+  variables, each defaulting to `null` (auto-derive) with a real value
+  winning outright, same as the rest of the palette. At the default light
+  palette every value is pixel-identical to before except
+  `--hold-input-border`, which shifts by a single 8-bit rounding unit
+  (`#d0d1d3` → `#d0d1d4`); set `$inputBorder = '#d0d1d3';` to keep the
+  previous exact value.
 
 ### Changed
 

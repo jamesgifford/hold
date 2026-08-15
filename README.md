@@ -488,10 +488,16 @@ yet:
 ```php
 $bg = '#f5f6f8';
 
-$accent = null;   // set to override the automatic hue-matched derivation
-$text = null;     // set to override the automatic light/dark derivation
-$cardBg = null;   // set to override the automatic card-background blend
-$inputBg = null;  // set to override; defaults to $bg (the "cutout" look)
+$accent = null;            // set to override the automatic hue-matched derivation
+$text = null;              // set to override the automatic light/dark derivation
+$cardBg = null;            // set to override the automatic card-background blend
+$inputBg = null;           // set to override; defaults to $bg (the "cutout" look)
+$inputBorder = null;       // set to override the automatic border-color blend
+$cardShadowColor = null;   // set to override the automatic light-shadow/dark-glow choice
+$alertSuccessBg = null;    // set to override the automatic success-alert background blend
+$alertSuccessText = null;  // set to override the automatic success-alert text derivation
+$alertErrorBg = null;      // set to override the automatic error-alert background blend
+$alertErrorText = null;    // set to override the automatic error-alert text derivation
 
 $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;
 // ^ 0-1; how strongly $cardBg blends toward $text when auto-deriving.
@@ -508,11 +514,31 @@ contrast against `$bg` (so a dark `$bg` gets light text, not just a repaint
 of the light-mode default); `$cardBg` is a subtle blend of `$bg` toward
 `$text`, so the card reads as a distinct surface in both a light and a dark
 theme; `$inputBg` defaults to `$bg` exactly, so the email field still reads
-as a cutout showing the page behind the card. These five land in `:root {}`
-as the same `--hold-bg` / `--hold-card-bg` / `--hold-text` / `--hold-accent`
-/ `--hold-input-bg` custom properties every rule in the stylesheet already
-reads — editing them there directly has no effect, since Blade re-writes
-them from the PHP variables on every render.
+as a cutout showing the page behind the card.
+
+`$inputBorder` blends toward `$text` (not a fixed black) at
+`ColorTheme::INPUT_BORDER_BLEND_WEIGHT` (`0.17`), so the border stays a
+subtle edge on a light `$inputBg` and a clearly visible one on a dark
+`$inputBg` — a fixed `rgba(0, 0, 0, 0.15)` border nearly disappears against
+a dark background. `$cardShadowColor` picks whichever of pure black or
+white contrasts more with `$bg`, so a dark `$bg` gets a light "glow"
+instead of an invisible black-on-black shadow. `$alertSuccessBg` and
+`$alertErrorBg` tint `$cardBg` — not `$bg` — toward a fixed semantic hue
+(green/red), since the alert renders inside the card, so `$cardBg` is its
+real backdrop; the blend weight matches the shipped default's previous
+`rgba()` alpha exactly, so the default appearance doesn't move.
+`$alertSuccessText` and `$alertErrorText` each pick whichever of a
+light-mode/dark-mode text candidate contrasts more with that actual
+composited alert background, so alert text stays legible on both a light
+and a dark card.
+
+These eleven land in `:root {}` as the same `--hold-bg` / `--hold-card-bg`
+/ `--hold-text` / `--hold-accent` / `--hold-input-bg` / `--hold-input-border`
+/ `--hold-card-shadow-color` / `--hold-alert-success-bg` /
+`--hold-alert-success-text` / `--hold-alert-error-bg` /
+`--hold-alert-error-text` custom properties every rule in the stylesheet
+already reads — editing them there directly has no effect, since Blade
+re-writes them from the PHP variables on every render.
 
 `$cardBlendWeight` tunes *how strongly* `$cardBg` departs from `$bg` — the
 default (`ColorTheme::CARD_BLEND_WEIGHT`, `0.12`) is deliberately subtle;
@@ -521,14 +547,19 @@ It's read only while `$cardBg` is left to auto-derive — set `$cardBg`
 directly and this has no effect.
 
 **Full manual control is never lost.** `$bg` is a plain, independently-set
-value. `$accent`, `$text`, `$cardBg`, and `$inputBg` each default to `null`
-("derive automatically"); set any one of them to a real hex value instead
-and that value wins outright, no derivation runs for that property — a
-per-property escape hatch, not an all-or-nothing toggle.
+value. `$accent`, `$text`, `$cardBg`, `$inputBg`, `$inputBorder`,
+`$cardShadowColor`, `$alertSuccessBg`, `$alertSuccessText`,
+`$alertErrorBg`, and `$alertErrorText` each default to `null` ("derive
+automatically"); set any one of them to a real hex value instead and that
+value wins outright, no derivation runs for that property — a per-property
+escape hatch, not an all-or-nothing toggle.
 
 The color math itself lives in `JamesGifford\Hold\Support\ColorTheme` (WCAG
-relative luminance and contrast ratio, HSL hue extraction/reconstruction for
-the accent, plus a simple per-channel blend for the card) — plain,
+relative luminance and contrast ratio — including a shared
+`betterContrast()` helper that picks whichever of two named candidate
+colors contrasts more with a background, driving the text/shadow/alert-text
+choices — HSL hue extraction/reconstruction for the accent, plus a simple
+per-channel blend for the card, border, and alert backgrounds) — plain,
 framework-free PHP, unit tested independently of the templates.
 
 **Layout** is two more custom properties alongside the color knobs:
