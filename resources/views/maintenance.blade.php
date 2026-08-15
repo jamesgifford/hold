@@ -19,24 +19,11 @@
 
     /*
      * ── Palette ─────────────────────────────────────────────────────────────
-     * Set $bg to reskin — everything else below (accent, text, card
-     * background, input fill/border, alert colors, card shadow) derives
-     * automatically from it, so a basic reskin is a one-line change. Set
-     * any variable below directly (null means auto-derive, a real value
-     * wins outright) to take manual control of just that one value instead.
-     *
-     * Plain PHP variables here, not literals inside the <style> block below,
-     * like the mail templates' palette: picking a readable text color for an
-     * arbitrary $bg needs real branching logic (compare WCAG contrast
-     * against a light and a dark candidate, keep the higher), and deriving
-     * a good accent needs even more (match $bg's hue, then darken it until
-     * it clears WCAG contrast against the submit button's fixed white
-     * label) — there's no broadly-supported CSS function that can do
-     * either yet — see JamesGifford\Hold\Support\ColorTheme for the actual
-     * math.
+     * Set $bg to reskin — everything below derives from it automatically.
+     * Leave a variable null to auto-derive it, or set it directly to
+     * override just that one value. See ColorTheme for the derivation math.
      */
     $bg = '#f5f6f8';
-
     $accent = null;            // set to override the automatic hue-matched derivation
     $text = null;              // set to override the automatic light/dark derivation
     $cardBg = null;            // set to override the automatic card-background blend
@@ -47,31 +34,19 @@
     $alertSuccessText = null;  // set to override the automatic success-alert text derivation
     $alertErrorBg = null;      // set to override the automatic error-alert background blend
     $alertErrorText = null;    // set to override the automatic error-alert text derivation
+    $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT; // 0-1; how strongly $cardBg blends toward $text
 
-    // How strongly $cardBg blends toward $text when auto-deriving (0-1;
-    // higher = the card visibly departs further from $bg). Only applies
-    // while $cardBg above is left null — has no effect once you set it.
-    $cardBlendWeight = \JamesGifford\Hold\Support\ColorTheme::CARD_BLEND_WEIGHT;
-
+    // Derive anything left null above from $bg:
     $accent ??= \JamesGifford\Hold\Support\ColorTheme::accentFor($bg);
     $text ??= \JamesGifford\Hold\Support\ColorTheme::textFor($bg);
     $cardBg ??= \JamesGifford\Hold\Support\ColorTheme::cardBackground($bg, $text, $cardBlendWeight);
     $inputBg ??= $bg;
-
-    // Blends toward $text, not a fixed literal — the same "blend toward
-    // text" trick cardBackground() uses — so the border stays a subtle
-    // edge on a light $inputBg and a clearly visible one on a dark one.
     $inputBorder ??= \JamesGifford\Hold\Support\ColorTheme::blend($inputBg, $text, \JamesGifford\Hold\Support\ColorTheme::INPUT_BORDER_BLEND_WEIGHT);
-
-    // Whichever of pure black/white contrasts more with $bg — a dark $bg
-    // gets a light "glow" instead of an invisible black-on-black shadow.
     $cardShadowColor ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($bg, '#000000', '#ffffff');
     $cardShadowRgb = implode(', ', \JamesGifford\Hold\Support\ColorTheme::toRgb($cardShadowColor));
 
-    // Each alert tints $cardBg (not $bg) toward a fixed semantic hue — the
-    // alert renders inside the card, so $cardBg is its real backdrop —
-    // then picks whichever of a light-mode/dark-mode text candidate
-    // contrasts more with that actual composited background.
+    // Alerts tint $cardBg, not $bg — the alert renders inside the card, so
+    // $cardBg is its real backdrop.
     $alertSuccessBg ??= \JamesGifford\Hold\Support\ColorTheme::blend($cardBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TINT, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_BLEND_WEIGHT);
     $alertSuccessText ??= \JamesGifford\Hold\Support\ColorTheme::betterContrast($alertSuccessBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TEXT_LIGHT, \JamesGifford\Hold\Support\ColorTheme::ALERT_SUCCESS_TEXT_DARK);
     $alertErrorBg ??= \JamesGifford\Hold\Support\ColorTheme::blend($cardBg, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_TINT, \JamesGifford\Hold\Support\ColorTheme::ALERT_ERROR_BLEND_WEIGHT);
