@@ -150,17 +150,19 @@ final class SetupCommand extends Command
 
     protected function publishMigration(PackageMigration $migration): void
     {
-        if ($migration->isPublished()) {
-            $existing = array_map('basename', $migration->publishedFiles());
-            $this->line('  - migration already published (skipped): '.implode(', ', $existing));
-            $this->skipped[] = 'database migration (already published: '.implode(', ', $existing).')';
+        $newlyPublished = $migration->publish();
 
-            return;
+        foreach ($newlyPublished as $filename) {
+            $this->line('  - published migration '.$filename);
+            $this->published[] = $this->laravel->databasePath('migrations').DIRECTORY_SEPARATOR.$filename;
         }
 
-        $filename = $migration->publish();
-        $this->line('  - published migration '.$filename);
-        $this->published[] = $this->laravel->databasePath('migrations').DIRECTORY_SEPARATOR.$filename;
+        $alreadyThere = array_diff(array_map('basename', $migration->publishedFiles()), $newlyPublished);
+
+        if ($alreadyThere !== []) {
+            $this->line('  - migration(s) already published (skipped): '.implode(', ', $alreadyThere));
+            $this->skipped[] = 'database migration (already published: '.implode(', ', $alreadyThere).')';
+        }
     }
 
     protected function publishModel(bool $interactive): void

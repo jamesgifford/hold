@@ -22,11 +22,13 @@ use JamesGifford\Hold\HoldSignupContext;
  * config('jamesgifford.hold.models.signup'), so pointing that at a subclass
  * swaps behavior without touching the package.
  *
- * Unsubscribe is a soft state and an APP-OWNED DATA CONTRACT: the package keeps
- * the unsubscribed_at column, fully respects it (the subscribed() scope excludes
- * it from every package email), and exposes {@see unsubscribe()} /
- * {@see resubscribe()} plus the `jamesgifford:hold:unsubscribe` operator command
- * — but ships NO user-facing way to set it and never sets or clears it on its own.
+ * Unsubscribe is a soft state: the package keeps the unsubscribed_at column,
+ * fully respects it (the subscribed() scope excludes it from every package
+ * email), and sets it via the /unsubscribe route reached from a signed link
+ * in every list email (or the `jamesgifford:hold:unsubscribe` operator
+ * command / {@see unsubscribe()} directly) — but only ever CLEARS it via a
+ * successful /verify click ({@see resubscribe()}), proof the mailbox owner
+ * initiated the re-subscribe. The package never clears it on its own.
  *
  * @property int $id
  * @property string $email
@@ -36,10 +38,11 @@ use JamesGifford\Hold\HoldSignupContext;
  * @property string|null $user_agent
  * @property Carbon|null $notified_at
  * @property Carbon|null $unsubscribed_at
+ * @property Carbon|null $verified_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
-#[Fillable(['email', 'context', 'requested_at', 'ip_address', 'user_agent'])]
+#[Fillable(['email', 'context', 'requested_at', 'verified_at', 'ip_address', 'user_agent'])]
 class HoldSignup extends Model implements HoldSignupContract
 {
     /** @use HasFactory<HoldSignupFactory> */
@@ -74,6 +77,19 @@ class HoldSignup extends Model implements HoldSignupContract
     }
 
     /**
+     * Confirm this address's ownership. Idempotent: an already-verified row
+     * keeps its original timestamp. The announcer only ever emails verified
+     * rows — see {@see verified()}.
+     */
+    public function markVerified(): void
+    {
+        if ($this->verified_at === null) {
+            $this->verified_at = Carbon::now();
+            $this->save();
+        }
+    }
+
+    /**
      * Addresses that have not yet been sent their announcement.
      */
     /**
@@ -98,6 +114,19 @@ class HoldSignup extends Model implements HoldSignupContract
     }
 
     /**
+     * Addresses whose ownership has been confirmed — or, when
+     * verification.required is off, stamped verified at capture time.
+     */
+    /**
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function verified(Builder $query): void
+    {
+        $query->whereNotNull('verified_at');
+    }
+
+    /**
      * Restrict to a single capture context (prelaunch or maintenance).
      */
     /**
@@ -119,6 +148,7 @@ class HoldSignup extends Model implements HoldSignupContract
             'requested_at' => 'datetime',
             'notified_at' => 'datetime',
             'unsubscribed_at' => 'datetime',
+            'verified_at' => 'datetime',
         ];
     }
 

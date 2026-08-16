@@ -34,12 +34,16 @@ it('round-trips: setup then uninstall returns the app to a clean state', functio
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/announcement.blade.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/team.blade.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/receipt.blade.php'))->toBeFalse()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/verify.blade.php'))->toBeFalse()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/verified.blade.php'))->toBeFalse()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/unsubscribed.blade.php'))->toBeFalse()
         ->and(File::isDirectory($this->appRoot.'/resources/views/vendor/hold'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.blade.php'))->toBeFalse()
         ->and(File::isDirectory($this->appRoot.'/storage/jamesgifford/hold'))->toBeFalse()
         ->and(File::isDirectory($this->appRoot.'/config/jamesgifford'))->toBeFalse();
 
     expect(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toBeEmpty();
+    expect(File::glob($this->appRoot.'/database/migrations/*_add_verification_to_hold_signups_table.php'))->toBeEmpty();
     expect(Schema::hasTable('hold_signups'))->toBeFalse();
 });
 
@@ -69,16 +73,18 @@ it('keeps the data when run with --no-interaction and without --force', function
         ->and(File::exists($this->appRoot.'/app/Models/HoldSignup.php'))->toBeFalse();
 
     expect(Schema::hasTable('hold_signups'))->toBeTrue()
-        ->and(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1);
+        ->and(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1)
+        ->and(File::glob($this->appRoot.'/database/migrations/*_add_verification_to_hold_signups_table.php'))->toHaveCount(1);
 });
 
-it('keeps the table and migration file with --keep-data', function () {
+it('keeps the table and both migration files with --keep-data', function () {
     $this->artisan('jamesgifford:hold:uninstall', ['--force' => true, '--keep-data' => true])
         ->assertSuccessful();
 
     // Data-bearing assets kept.
     expect(Schema::hasTable('hold_signups'))->toBeTrue()
-        ->and(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1);
+        ->and(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1)
+        ->and(File::glob($this->appRoot.'/database/migrations/*_add_verification_to_hold_signups_table.php'))->toHaveCount(1);
 
     // Non-data assets still removed.
     expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeFalse()

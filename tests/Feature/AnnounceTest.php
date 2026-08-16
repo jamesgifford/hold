@@ -50,6 +50,28 @@ it('never emails an unsubscribed signup', function () {
     Notification::assertNothingSent();
 });
 
+it('never emails an unverified signup, and never stamps it', function () {
+    // Safe unconditionally, whatever verification.required is currently set
+    // to: the stamp-on-create rule (HoldSignupController) means every row
+    // is verified-or-pending by construction, so this can never strand a
+    // legitimately-captured row.
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->unverified()->count(3)->create();
+
+    $result = app(Announcer::class)->send(HoldSignupContext::Prelaunch);
+
+    expect($result->sent)->toBe(0);
+    Notification::assertNothingSent();
+    expect(HoldSignup::whereNotNull('notified_at')->count())->toBe(0);
+});
+
+it('reports a pending count that excludes unverified signups', function () {
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+    HoldSignup::factory()->prelaunch()->unverified()->create();
+
+    expect(app(Announcer::class)->pending(HoldSignupContext::Prelaunch))->toBe(2);
+});
+
 it('honors a config override of the notification class', function () {
     config()->set('jamesgifford.hold.notifications.classes.launch_announcement', CustomLaunchAnnouncement::class);
     Notification::fake();
@@ -86,7 +108,7 @@ it('command infers the sole context with pending signups', function () {
     Notification::fake();
     HoldSignup::factory()->prelaunch()->count(2)->create();
 
-    $this->artisan('jamesgifford:hold:announce')
+    $this->artisan('jamesgifford:hold:announce', ['--yes' => true])
         ->assertSuccessful()
         ->expectsOutputToContain('Announced to 2');
 
@@ -103,6 +125,106 @@ it('announces across multiple chunks for a larger seeded set', function () {
     expect($result->sent)->toBe(450)
         ->and(HoldSignup::whereNull('notified_at')->count())->toBe(0);
     Notification::assertSentOnDemandTimes(LaunchAnnouncement::class, 450);
+});
+
+// --- Confirmation before sending --------------------------------------------
+
+it('prompts with the exact pending count before sending, and aborts cleanly on no', function () {
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $this->artisan('jamesgifford:hold:announce')
+        ->expectsOutputToContain('About to email 2 prelaunch signup(s).')
+        ->expectsConfirmation('Send now?', 'no')
+        ->assertFailed();
+
+    Notification::assertNothingSent();
+    expect(HoldSignup::whereNotNull('notified_at')->count())->toBe(0);
+});
+
+it('sends when the confirmation prompt is accepted', function () {
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $this->artisan('jamesgifford:hold:announce')
+        ->expectsConfirmation('Send now?', 'yes')
+        ->assertSuccessful();
+
+    Notification::assertSentOnDemandTimes(LaunchAnnouncement::class, 2);
+});
+
+it('--yes skips the confirmation prompt and sends', function () {
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $this->artisan('jamesgifford:hold:announce', ['--yes' => true])
+        ->assertSuccessful();
+
+    Notification::assertSentOnDemandTimes(LaunchAnnouncement::class, 2);
+});
+
+it('refuses to send non-interactively without --yes, sending nothing', function () {
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $this->artisan('jamesgifford:hold:announce', ['--no-interaction' => true])
+        ->assertFailed()
+        ->expectsOutputToContain('--yes');
+
+    Notification::assertNothingSent();
+});
+
+// --- Rehearsal: --test=<address> --------------------------------------------
+
+it('sends a rendered test announcement to an arbitrary address, touching no rows', function () {
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->count(2)->create();
+
+    $this->artisan('jamesgifford:hold:announce', ['--context' => 'prelaunch', '--test' => 'rehearsal@example.com'])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Sent a test prelaunch announcement to rehearsal@example.com');
+
+    Notification::assertSentOnDemandTimes(LaunchAnnouncement::class, 1);
+    expect(HoldSignup::whereNotNull('notified_at')->count())->toBe(0);
+    expect(HoldSignup::count())->toBe(2); // no row created for the test address
+    expect(app(Announcer::class)->pending(HoldSignupContext::Prelaunch))->toBe(2);
+});
+
+it('works for a --test send when zero signups are pending, given an explicit --context', function () {
+    Notification::fake();
+
+    $this->artisan('jamesgifford:hold:announce', ['--context' => 'maintenance', '--test' => 'rehearsal@example.com'])
+        ->assertSuccessful();
+
+    Notification::assertSentOnDemandTimes(ServiceRestored::class, 1);
+    expect(HoldSignup::count())->toBe(0);
+});
+
+it('refuses a --test send with no context inferrable and none given', function () {
+    Notification::fake();
+
+    $this->artisan('jamesgifford:hold:announce', ['--test' => 'rehearsal@example.com'])
+        ->assertFailed()
+        ->expectsOutputToContain('--context');
+
+    Notification::assertNothingSent();
+});
+
+it('validates the --test address', function () {
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->create();
+
+    $this->artisan('jamesgifford:hold:announce', ['--context' => 'prelaunch', '--test' => 'not-an-email'])
+        ->assertFailed()
+        ->expectsOutputToContain('not a valid email');
+
+    Notification::assertNothingSent();
+});
+
+it('rejects combining --test with --dry-run', function () {
+    $this->artisan('jamesgifford:hold:announce', ['--dry-run' => true, '--test' => 'rehearsal@example.com'])
+        ->assertFailed()
+        ->expectsOutputToContain('cannot be combined');
 });
 
 it('command requires --context when both contexts have pending signups', function () {

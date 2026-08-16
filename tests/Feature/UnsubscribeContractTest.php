@@ -8,7 +8,6 @@ use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
-use JamesGifford\Hold\Notifications\ServiceRestored;
 
 // --- the operator command --------------------------------------------------
 
@@ -45,17 +44,21 @@ it('excludes unsubscribed rows from the signup receipt', function () {
     config()->set('jamesgifford.hold.notifications.send_signup_receipt', true);
 
     // An already-notified, unsubscribed row — re-signing up re-arms it and fires
-    // HoldSignupCaptured, but the receipt must not send to an unsubscribed address.
+    // HoldSignupCaptured. The receipt must not send to an unsubscribed address —
+    // but the verification email IS deliberately sent (see
+    // HoldNotificationsTest's "sends verification to an opted-out address that
+    // re-signs up"): it's the one path that can clear the opt-out.
     HoldSignup::factory()->prelaunch()->notified()->unsubscribed()->create(['email' => 'u@example.com']);
 
     $this->post('hold/signup', ['email' => 'u@example.com', 'context' => 'prelaunch'])->assertRedirect();
 
-    Notification::assertNothingSent();
+    Notification::assertSentOnDemandTimes(HoldSignupReceipt::class, 0);
 });
 
 it('sends the receipt to a subscribed re-arm', function () {
     Notification::fake();
     config()->set('jamesgifford.hold.notifications.send_signup_receipt', true);
+    config()->set('jamesgifford.hold.verification.required', false);
 
     HoldSignup::factory()->prelaunch()->notified()->create(['email' => 's@example.com']);
 
@@ -79,17 +82,10 @@ it('restores announce eligibility after resubscribe()', function () {
     Notification::assertSentOnDemandTimes(LaunchAnnouncement::class, 1);
 });
 
-// --- no unsubscribe surface in emails --------------------------------------
-
-it('renders no unsubscribe link in any public notification', function () {
-    $signup = HoldSignup::factory()->prelaunch()->create();
-
-    foreach ([LaunchAnnouncement::class, ServiceRestored::class, HoldSignupReceipt::class] as $class) {
-        $mail = (new $class($signup))->toMail($signup);
-        // Copy now lives in the self-contained view, so assert against the
-        // rendered HTML rather than the (now unused) intro/outro lines.
-        $html = strtolower(view($mail->view, $mail->viewData)->render());
-
-        expect($html)->not->toContain('unsubscribe');
-    }
-});
+// --- unsubscribe surface in emails ------------------------------------------
+//
+// As of 1.4.0 the two announcements and the receipt DO carry an opt-out link
+// and List-Unsubscribe headers — see EmailCopyTest.php ("renders the
+// unsubscribe footer link...") and HoldNotificationsTest.php ("carries
+// List-Unsubscribe headers..."). The team notice and the verification email
+// deliberately carry neither (also covered there).

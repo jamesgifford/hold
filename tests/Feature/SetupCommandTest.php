@@ -37,6 +37,9 @@ it('publishes every asset at its exact path (with extensions) and migrates', fun
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/announcement.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/team.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/receipt.blade.php'))->toBeTrue()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/mail/verify.blade.php'))->toBeTrue()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/verified.blade.php'))->toBeTrue()
+        ->and(File::exists($this->appRoot.'/resources/views/vendor/hold/unsubscribed.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.blade.php'))->toBeTrue()
         ->and(File::exists($this->appRoot.'/resources/views/errors/503.php'))->toBeFalse()
         ->and(File::exists($this->appRoot.'/storage/jamesgifford/hold/.gitignore'))->toBeTrue();
@@ -47,9 +50,13 @@ it('publishes every asset at its exact path (with extensions) and migrates', fun
     expect(File::get($this->appRoot.'/resources/views/vendor/hold/maintenance.blade.php'))
         ->toContain('value="maintenance"');
 
-    // Exactly one timestamped migration was published.
-    $migrations = File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php');
-    expect($migrations)->toHaveCount(1);
+    // Exactly one timestamped migration was published per stem, the
+    // verification one sorting after the create one.
+    $create = File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php');
+    $addVerification = File::glob($this->appRoot.'/database/migrations/*_add_verification_to_hold_signups_table.php');
+    expect($create)->toHaveCount(1);
+    expect($addVerification)->toHaveCount(1);
+    expect(basename($addVerification[0]) > basename($create[0]))->toBeTrue();
 
     // The published model is renamed + renamespaced (App\Models\HoldSignup).
     expect(File::get($this->appRoot.'/app/Models/HoldSignup.php'))
@@ -131,10 +138,31 @@ it('is idempotent: a re-run adds no second migration and keeps the config', func
 
     $this->artisan('jamesgifford:hold:setup', ['--force' => true])->assertSuccessful();
 
-    $migrations = File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php');
-    expect($migrations)->toHaveCount(1);
+    expect(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1);
+    expect(File::glob($this->appRoot.'/database/migrations/*_add_verification_to_hold_signups_table.php'))->toHaveCount(1);
 
     expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toContain('edited-by-user');
+});
+
+it('publishes only the missing migration stub when one is already present (upgrade scenario)', function () {
+    // Simulates a 1.3.x install upgrading to 1.4.0: the create migration was
+    // already published by a previous setup run; the add-verification one
+    // was not (it did not exist yet). A re-run must publish only the latter
+    // and leave the pre-existing one untouched, not republish or duplicate it.
+    File::makeDirectory($this->appRoot.'/database/migrations', 0777, true);
+    File::put(
+        $this->appRoot.'/database/migrations/2026_01_01_000000_create_hold_signups_table.php',
+        File::get(dirname(__DIR__, 2).'/database/migrations/create_hold_signups_table.php.stub'),
+    );
+
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])->assertSuccessful();
+
+    expect(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toHaveCount(1);
+    expect(File::glob($this->appRoot.'/database/migrations/*_add_verification_to_hold_signups_table.php'))->toHaveCount(1);
+
+    // Untouched: still lacks the "published by" marker publish() would add.
+    expect(File::get($this->appRoot.'/database/migrations/2026_01_01_000000_create_hold_signups_table.php'))
+        ->not->toContain('Published by the jamesgifford/hold package');
 });
 
 // --- The published model must satisfy the contract --------------------------

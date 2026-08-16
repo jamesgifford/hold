@@ -1,10 +1,13 @@
 @php
     /*
-     * Hold's self-contained signup-receipt email — the optional "you're on the
-     * list" confirmation sent to a new signup when the receipt option is on.
+     * Hold's self-contained verification email — "confirm your email
+     * address," sent when config verification.required is true (the
+     * default) so an address must be confirmed by its own owner before the
+     * announcer will ever email it.
      *
-     * No Laravel mail markdown, theme, or build step — everything is in this one
-     * file. The receipt notification renders it via ->view(); every user-visible
+     * No Laravel mail markdown, theme, or build step — everything is in this
+     * one file. The notification renders it via ->view(), passing $signup
+     * and $verifyUrl (a signed, expiring link it mints); every user-visible
      * string lives in the blocks below.
      *
      * ── Palette ────────────────────────────────────────────────────────────
@@ -70,24 +73,22 @@
 
     /*
      * ── Copy ─────────────────────────────────────────────────────────────────
-     * Edit the email's text here.
+     * Edit the email's text here. $verifyUrl (the signed, expiring link) is
+     * passed in by the notification — it can't live in this block as a
+     * static string.
      */
     $copy = [
-        'heading' => 'You\'re on the list',
-        'body'    => 'Thanks — we\'ve added you to the list and will email you once when there\'s news.',
-        // Link text for the opt-out footer. Renders (with the footer's own
-        // spacing) only when $unsubscribeUrl was actually passed in — see
-        // FormatsHoldMail::applyUnsubscribe() — so a template published
-        // before this key existed just gets no footer, not an error.
-        'unsubscribe' => 'Unsubscribe',
+        'heading' => 'Confirm your email address',
+        'body'    => 'One more step — click below to confirm this address and finish signing up.',
+        'button'  => 'Confirm email',
     ];
     // Small line beneath the card.
-    $footnote = 'You\'re receiving this because you signed up to be notified.';
+    $footnote = 'If you didn\'t request this, you can safely ignore it.';
 
     $heading    = $copy['heading'];
     $lines      = (array) $copy['body'];
-    $actionUrl  = null;   // the receipt carries no call-to-action button
-    $actionText = null;
+    $actionUrl  = $verifyUrl;
+    $actionText = $copy['button'];
 @endphp
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -99,7 +100,7 @@
     <title>{{ $heading }}</title>
 </head>
 <body style="margin:0; padding:0; width:100%; background:{{ $bg }}; color:{{ $text }}; -webkit-text-size-adjust:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; line-height:1.6;">
-    <!-- hold:receipt -->
+    <!-- hold:verify -->
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ $bg }};">
         <tr>
@@ -134,13 +135,6 @@
                         <tr>
                             <td style="padding:20px 40px 0; font-size:13px; line-height:1.5; color:{{ $muted }};">
                                 {{ $footnote }}
-                            </td>
-                        </tr>
-                    @endif
-                    @if (! empty($unsubscribeUrl))
-                        <tr>
-                            <td style="padding:8px 40px 0; font-size:12px; line-height:1.5; color:{{ $muted }};">
-                                <a href="{{ $unsubscribeUrl }}" style="color:{{ $muted }}; text-decoration:underline;">{{ $copy['unsubscribe'] ?? 'Unsubscribe' }}</a>
                             </td>
                         </tr>
                     @endif

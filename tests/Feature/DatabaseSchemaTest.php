@@ -102,6 +102,25 @@ it('stores one row per address regardless of the casing submitted', function () 
         ->and(HoldSignup::first()->email)->toBe('person@example.com');
 });
 
+// --- verified_at ------------------------------------------------------------
+
+it('creates verified_at as a nullable column', function () {
+    // Nullable, not driver-specific: insert a row omitting it and confirm the
+    // write succeeds and the column reads back null — works identically on
+    // MariaDB and SQLite, unlike an information_schema query.
+    DB::table(PackageMigration::TABLE)->insert([
+        'email' => 'nullable-verified@example.com',
+        'context' => 'prelaunch',
+        'requested_at' => Carbon::now(),
+        'created_at' => Carbon::now(),
+        'updated_at' => Carbon::now(),
+    ]);
+
+    expect(
+        DB::table(PackageMigration::TABLE)->where('email', 'nullable-verified@example.com')->value('verified_at')
+    )->toBeNull();
+});
+
 it('enforces the unique email index at the database level', function () {
     HoldSignup::factory()->create(['email' => 'unique@example.com']);
 

@@ -59,3 +59,47 @@ it('keeps the original timestamp when unsubscribe is called twice', function () 
 
     expect($signup->unsubscribed_at->equalTo($original))->toBeTrue();
 });
+
+// --- verified_at --------------------------------------------------------
+
+it('is verified by default, matching requested_at', function () {
+    $signup = HoldSignup::factory()->create();
+
+    expect($signup->verified_at)->toBeInstanceOf(Carbon::class)
+        ->and($signup->verified_at->equalTo($signup->requested_at))->toBeTrue();
+});
+
+it('casts verified_at to Carbon and lets it be explicitly unset via the unverified state', function () {
+    $signup = HoldSignup::factory()->unverified()->create();
+
+    expect($signup->refresh()->verified_at)->toBeNull();
+});
+
+it('marks a signup verified by stamping verified_at', function () {
+    $signup = HoldSignup::factory()->unverified()->create();
+
+    $signup->markVerified();
+
+    expect($signup->verified_at)->toBeInstanceOf(Carbon::class)
+        ->and(HoldSignup::whereKey($signup->getKey())->exists())->toBeTrue();
+});
+
+it('keeps the original verified_at when markVerified is called twice', function () {
+    $signup = HoldSignup::factory()->unverified()->create();
+
+    $signup->markVerified();
+    $original = $signup->verified_at;
+
+    Carbon::setTestNow(Carbon::now()->addHour());
+    $signup->markVerified();
+    Carbon::setTestNow();
+
+    expect($signup->verified_at->equalTo($original))->toBeTrue();
+});
+
+it('scopes to verified signups', function () {
+    HoldSignup::factory()->create();
+    HoldSignup::factory()->unverified()->create();
+
+    expect(HoldSignup::verified()->count())->toBe(1);
+});

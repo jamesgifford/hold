@@ -26,6 +26,12 @@ email everyone — once — when you're ready:
 Hold is the unified interface for both — one command pair (`enable {mode}` /
 `disable`), with only one mode ever active at a time.
 
+By default a new signup must confirm its own address (a link in a
+verification email) before the announcer will ever email it, and every
+announcement/receipt carries a self-service opt-out link — see
+[Email verification](#email-verification-double-opt-in) and
+[Unsubscribe](#unsubscribe).
+
 The package provides mechanism; your app owns orchestration. The migration and
 the `HoldSignup` model are **published into your app** — you own them. Integration
 is container-only: nothing edits `bootstrap/app.php` or any other core file, so
@@ -73,7 +79,11 @@ and so on. Every later step re-reads the (possibly edited) config — there are 
 hardcoded defaults past the pause.
 
 Setup is idempotent: re-running never publishes a second migration and never
-clobbers an edited config (it prompts, or skips silently when unattended).
+clobbers an edited config (it prompts, or skips silently when unattended). An
+already-published migration is left untouched — only a genuinely new one
+(e.g. the `add_verification_to_hold_signups_table` migration added in 1.4.0)
+gets published on a re-run, so upgrading the package and re-running `setup`
+is the normal way to pick up a new migration.
 
 ## Quick start
 
@@ -227,6 +237,15 @@ requested notification for the current hold:
 
 Each requested hold produces **exactly one** notification (the `notified_at` guard).
 
+**Verification (`verified_at`) is separate from the per-hold lifecycle
+above** — it tracks proven ownership of the address, not participation in
+any one hold. A new signup gets it stamped immediately if
+`verification.required` is off, or left `null` (pending a verify click) if
+it's on, the default — see
+[Email verification](#email-verification-double-opt-in). Re-arming never
+touches it either way: once an address is verified, it stays verified
+across every later hold.
+
 The signup route is **CSRF-exempt** by design: both holding pages render before
 Laravel starts the session (prelaunch is global middleware; the 503 view renders
 during an aborted maintenance request), so neither can embed a CSRF token. The
@@ -234,31 +253,87 @@ honeypot and rate limit guard the endpoint instead. Feedback is returned as a
 `?hold=subscribed|invalid` query param the views read — again, because session
 flash isn't available where these pages render.
 
+## Email verification (double opt-in)
+
+By default, a new signup must click a link in a verification email before
+the announcer will ever email it — protection against one person signing
+someone else's address up without their knowledge. Controlled by
+`verification.required` (default `true`):
+
+- **On** (default): capture leaves `verified_at` `null`; `SignupVerification`
+  is sent immediately with a signed, expiring link to `/{prefix}/verify`.
+  Clicking it stamps `verified_at` and renders a confirmation page
+  (`verified.blade.php`). The link stays valid for
+  `verification.link_lifetime_days` (default 7 days); an unverified signup
+  can always re-submit the form for a fresh one — a same-cycle duplicate of
+  an unverified row re-sends the verification email rather than writing
+  anything.
+- **Off**: capture stamps `verified_at` at signup time instead, so no
+  address is ever left permanently unreachable whichever way this is set.
+  The optional signup receipt (`notifications.send_signup_receipt`) sends in
+  this mode — verification, when required, **supersedes** it: exactly one
+  signup-time email either way, never both.
+
+Verification tracks proven ownership of the address, not participation in a
+hold — it's permanent, not per-hold. A row that re-arms for a later hold
+*keeps* its `verified_at`; it never re-proves ownership it already proved.
+
+**Clicking the verify link is also the only thing that clears an opt-out.**
+If an address opts out (see [Unsubscribe](#unsubscribe)) and later signs up
+again, it still gets a verification email — signing up alone never clears
+`unsubscribed_at`, but a successful verify click does. This means only the
+mailbox owner can bring an opted-out address back onto the list.
+
+Customize `mail/verify.blade.php` the same way as the other email templates
+(see [Customizing the announcement emails](#customizing-the-announcement-emails))
+— palette, optional header, `$copy`. The subject is config-driven
+(`notifications.subject_verify`); override the notification class via
+`notifications.classes.signup_verification`.
+
 ## Announcements and notifications
 
-Four notifications ship with the package, all sent via on-demand mail routes (no
-`User` model required):
+Five notifications ship with the package, all sent via on-demand mail routes
+(no `User` model required):
 
 | Notification | Sent to | When |
 | --- | --- | --- |
 | `TeamHoldEnabled` | your team addresses | a hold begins |
-| `LaunchAnnouncement` | prelaunch signups | you announce a launch |
-| `ServiceRestored` | maintenance signups | you announce a restore |
-| `HoldSignupReceipt` | a new/re-armed signup (optional) | on capture, if enabled |
+| `SignupVerification` | a new/re-armed unverified signup | on capture, when verification is required (the default) |
+| `LaunchAnnouncement` | verified prelaunch signups | you announce a launch |
+| `ServiceRestored` | verified maintenance signups | you announce a restore |
+| `HoldSignupReceipt` | a new/re-armed signup (optional) | on capture, when verification is off and the receipt is enabled |
 
-Unsubscribed rows (`unsubscribed_at` set) receive **none** of these — including
-the receipt (see [Unsubscribe](#unsubscribe-an-app-owned-data-contract)).
+Unsubscribed rows (`unsubscribed_at` set) and unverified rows (`verified_at`
+`null`) receive **none** of the two announcements or the receipt — see
+[Email verification](#email-verification-double-opt-in) above and
+[Unsubscribe](#unsubscribe) below.
 
 ```bash
-# Announce immediately (idempotent — notified signups are never emailed twice)
+# Announce — prints the exact recipient count and asks for confirmation
 php artisan jamesgifford:hold:announce --context=prelaunch
+
+# Skip the confirmation prompt (needed for a non-interactive/CI run)
+php artisan jamesgifford:hold:announce --context=prelaunch --yes
 
 # See who would be emailed, without sending
 php artisan jamesgifford:hold:announce --dry-run
+
+# Rehearse: send one fully rendered announcement to yourself, touching no rows
+php artisan jamesgifford:hold:announce --context=prelaunch --test=you@example.com
 ```
 
 If exactly one context has pending signups, `--context` can be omitted. The
 announce job sends in chunks and stamps `notified_at` per recipient.
+
+**A real send always asks first.** `announce` prints
+`About to email N <context> signup(s).` and asks `Send now?` before sending —
+a mass email is not something to send by accident. `--yes` skips the prompt
+for scripted/CI use; without it, a non-interactive run (`-n`) refuses rather
+than silently emailing everyone. `--test=<address>` is the exception: it
+never prompts, sends exactly one rendered email to the address you give it,
+and never touches a row or a recipient count — the way to see exactly what
+real recipients will get before committing to a send. `--dry-run` and
+`--test` cannot be combined.
 
 **Delayed / auto-announce.** With `auto_announce_on_up` enabled, disabling
 prelaunch (or bringing the app back `up`) dispatches the announcement after
@@ -280,13 +355,14 @@ is active again when the job runs, it aborts silently and emails no one.
 
 Every package email renders through a **self-contained HTML template** with
 inline styles and **no dependency on Laravel's mail markdown layout** (no theme,
-no build step). Setup publishes three, one per email, that you own and edit:
+no build step). Setup publishes four, one per email, that you own and edit:
 
 | Template | Email |
 | --- | --- |
 | `resources/views/vendor/hold/mail/announcement.blade.php` | launch & restore announcements |
 | `resources/views/vendor/hold/mail/team.blade.php` | the internal "hold enabled" team notice |
 | `resources/views/vendor/hold/mail/receipt.blade.php` | the optional signup receipt |
+| `resources/views/vendor/hold/mail/verify.blade.php` | the email-verification email |
 
 The package falls back to its own copy of each until you publish. Two levels of
 control:
@@ -381,29 +457,49 @@ class name at send time:
 ],
 ```
 
-## Unsubscribe (an app-owned data contract)
+## Unsubscribe
 
-Unsubscribe is a **data contract, not a feature.** The package keeps the
-`unsubscribed_at` column and fully respects it — an unsubscribed row receives
-**no** package email (announcements *and* the signup receipt) — but ships **no
-user-facing way to set it**: no route, no controller, no link in any email. Your
-app decides whether and how to expose opt-out (e.g. a future global
-communications preference).
+The package keeps the `unsubscribed_at` column and fully respects it
+everywhere — an unsubscribed row receives **no** package email, including
+the receipt. Every list email — the two announcements and the signup
+receipt — carries a signed, **non-expiring** opt-out link
+(`/{prefix}/unsubscribe`) and RFC 8058 `List-Unsubscribe` /
+`List-Unsubscribe-Post` headers, so mail clients and providers can offer
+their own native one-click "Unsubscribe" UI too. Visiting the link (or a
+client's automatic one-click POST) sets `unsubscribed_at` and — for the
+GET — renders a confirmation page (`unsubscribed.blade.php`).
 
-The package provides the means and nothing more:
+**Signing up again never clears the opt-out on its own** — only a
+successful click on the verification link does (see
+[Email verification](#email-verification-double-opt-in)). A third party who
+knows an opted-out address therefore cannot re-arm it; only the mailbox
+owner, by actually opening the verification email, can.
+
+Beyond the self-service link, the package provides an operator path:
 
 - **Model methods** on the published `App\Models\HoldSignup`: `->unsubscribe()`
   and `->resubscribe()` (set / clear `unsubscribed_at`).
-- **Operator command** (server-side only, no public exposure):
+- **Operator command** (server-side only):
 
   ```bash
   php artisan jamesgifford:hold:unsubscribe user@example.com
   php artisan jamesgifford:hold:unsubscribe user@example.com --resubscribe
   ```
 
-The package **never** sets or clears `unsubscribed_at` on its own — not even on
-re-arm. An unsubscribed address whose row is re-armed by a later signup succeeds
-silently but is emailed nothing until the app resubscribes it.
+The package never clears `unsubscribed_at` on its own outside of a
+successful `/verify` click — not on re-arm, not from anything the operator
+command's non-`--resubscribe` form does. An unsubscribed address whose row
+is re-armed by a later signup succeeds silently but is emailed nothing
+until it verifies again or an operator resubscribes it.
+
+> **Existing installs:** the opt-out footer link only renders in a published
+> `mail/announcement.blade.php` / `mail/receipt.blade.php` that has the
+> `$copy['unsubscribe']` key — a copy published before 1.4.0 won't have it,
+> so it renders with no footer link (re-publish to add one:
+> `vendor:publish --tag=jamesgifford-hold-views --force`, or hand-add the
+> key). The `List-Unsubscribe` headers, though, are added by the
+> *notification class* itself and apply regardless of which template
+> version you're on.
 
 ## Configuration
 
@@ -425,6 +521,9 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `notifications.announce_delay_minutes` | `10` | Change-of-mind delay before an auto-announce sends. |
 | `notifications.subject_launch` | `We're live!` | Subject of the launch announcement (body copy lives in the template). |
 | `notifications.subject_restored` | `We're back online` | Subject of the restore announcement (body copy lives in the template). |
+| `notifications.subject_verify` | `Confirm your email address` | Subject of the verification email (body copy lives in the template). |
+| `verification.required` | `true` | Require a verify-link click before the announcer will ever email a signup. `false` stamps `verified_at` at capture time instead. |
+| `verification.link_lifetime_days` | `7` | How long a verification link stays valid. An unverified signup can always re-submit the form for a fresh one. |
 | `mail.from.address` / `mail.from.name` | `null` | From override (falls back to app defaults). |
 | `spam.rate_limit_per_minute` | `5` | Per-IP signup rate limit. |
 | `spam.honeypot_field` | `website` | Hidden honeypot field name. |
@@ -511,12 +610,20 @@ URIs are "package routes".
 
 Whatever `models.signup` points at must implement
 `JamesGifford\Hold\Contracts\HoldSignupContract` — it declares `unsubscribe()`,
-`resubscribe()`, and the columns the package reads. The published
-`App\Models\HoldSignup` implements it out of the box (setup writes it in), and so
-does any subclass of it. This is what lets the package resolve an app-owned class
-it has no static relationship with; a configured class that exists but does not
-implement the contract raises a clear exception rather than silently falling back
-to the package's own model.
+`resubscribe()`, `markVerified()`, and the columns the package reads. The
+published `App\Models\HoldSignup` implements it out of the box (setup writes
+it in), and so does any subclass of it. This is what lets the package resolve
+an app-owned class it has no static relationship with; a configured class
+that exists but does not implement the contract raises a clear exception
+rather than silently falling back to the package's own model.
+
+> **Existing installs:** `markVerified()` and the `verified_at` property were
+> added to the contract in 1.4.0. A custom `models.signup` class published
+> before then needs both added (`verified_at` also needs the `datetime` cast
+> and a migrated column — see [Setup](#setup)) — re-publish the model
+> (`php artisan jamesgifford:hold:setup`, accept the overwrite) or hand-add
+> them. The boot-time exception above already gives a clear message if you
+> forget.
 
 ## Customizing the views
 
@@ -527,10 +634,13 @@ you own an editable copy:
 resources/views/vendor/hold/
 ├── prelaunch.blade.php
 ├── maintenance.blade.php
+├── verified.blade.php
+├── unsubscribed.blade.php
 └── mail/
     ├── announcement.blade.php
     ├── team.blade.php
-    └── receipt.blade.php
+    ├── receipt.blade.php
+    └── verify.blade.php
 ```
 
 **How overriding works.** The package registers these under the `hold::` view
@@ -695,6 +805,17 @@ becomes `summary_large_image`.
 > --force`) or hand-add the pieces you want from the package copy — there is
 > no automatic merge.
 
+#### The verify and unsubscribed confirmation pages
+
+`verified.blade.php` and `unsubscribed.blade.php` render after a successful
+`/verify` or `/unsubscribe` click. They're deliberately minimal — no form, no
+alert states — so they carry only the palette variables they actually use:
+`$bg`, `$accent`, `$text`, `$cardBg`, `$cardShadowColor` (plus
+`$cardBlendWeight`), same `ColorTheme` derivation and `Hold::appearance()`
+config-tiering as the other holding pages, scoped under the `pages`
+appearance group. Each has its own small `$copy` block (`title`, `heading`,
+`body`, `link`) — edit the wording there.
+
 The email templates live alongside them under `mail/` — see
 [Customizing the announcement emails](#customizing-the-announcement-emails) for
 their palette, header/logo, and copy model.
@@ -717,10 +838,11 @@ the binding nor the signup route participate.
 
 The package ships a [Laravel Boost](https://github.com/laravel/boost) skill
 (`resources/boost/skills/jamesgifford-hold/`) that teaches an AI assistant the
-package's public API and guardrails — the two hold modes, signup capture, the
-announcement commands, notification overrides, and anti-patterns (e.g. never
-`php artisan down --render`). In a consuming app that uses Boost, install it with
-`php artisan boost:install` (or `boost:update` to refresh).
+package's public API and guardrails — the two hold modes, signup capture,
+email verification, unsubscribe, the announcement commands, notification
+overrides, and anti-patterns (e.g. never `php artisan down --render`). In a
+consuming app that uses Boost, install it with `php artisan boost:install`
+(or `boost:update` to refresh).
 
 ## Uninstall
 
@@ -749,7 +871,7 @@ outright without `--force`.
 | `jamesgifford:hold:uninstall` | `--force`, `--keep-data` | Remove everything published and drop the table (`--keep-data` to keep it). |
 | `jamesgifford:hold:enable {mode}` | `--retry` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). `--retry=<seconds>` overrides `maintenance.retry_after` for a maintenance enable. |
 | `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. |
-| `jamesgifford:hold:announce` | `--context`, `--dry-run` | Email the launch/restore announcement. |
+| `jamesgifford:hold:announce` | `--context`, `--dry-run`, `--yes`, `--test` | Email the launch/restore announcement — prints the recipient count and confirms first (`--yes` skips it); `--test=<address>` sends one rehearsal email touching no rows. |
 | `jamesgifford:hold:unsubscribe {email}` | `--resubscribe` | Operator tool: set or clear a signup's unsubscribe state. |
 
 Neither `enable` nor `disable` is production-guarded — they are the normal way to

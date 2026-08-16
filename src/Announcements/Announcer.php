@@ -40,6 +40,24 @@ final class Announcer
     }
 
     /**
+     * Send one rendered announcement to an arbitrary address, for
+     * rehearsing what a real send looks like before committing to it. Never
+     * persisted (the signup is built, not saved) and never stamped.
+     */
+    public function sendTest(HoldSignupContext $context, string $email): void
+    {
+        $class = Hold::notificationClass(self::NOTIFICATION_KEY[$context->value]);
+
+        $signup = new (Hold::signupModel())([
+            'email' => $email,
+            'context' => $context,
+            'requested_at' => Carbon::now(),
+        ]);
+
+        Notification::route('mail', $email)->notify(new $class($signup));
+    }
+
+    /**
      * Send the announcement for a context, stamping each recipient. Returns the
      * per-recipient tallies.
      */
@@ -76,7 +94,13 @@ final class Announcer
     }
 
     /**
-     * Subscribed, not-yet-notified signups for the given context.
+     * Subscribed, verified, not-yet-notified signups for the given context.
+     *
+     * Excluding unverified rows is safe unconditionally, whatever
+     * verification.required is currently set to: HoldSignupController
+     * stamps verified_at at capture time whenever verification is off, so
+     * every row is verified-or-genuinely-pending by construction — this can
+     * never strand a legitimately-captured signup.
      *
      * @return Builder<HoldSignup>
      */
@@ -84,6 +108,7 @@ final class Announcer
     {
         return Hold::signups()
             ->subscribed()
+            ->verified()
             ->notNotified()
             ->context($context);
     }

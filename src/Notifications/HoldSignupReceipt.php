@@ -42,6 +42,6 @@ class HoldSignupReceipt extends Notification
                 'signup' => $this->signup,
             ]);
 
-        return $this->applyFrom($mail);
+        return $this->applyFrom($this->applyUnsubscribe($mail, $this->signup));
     }
 }

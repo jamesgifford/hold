@@ -23,6 +23,7 @@ use JamesGifford\Hold\Http\Middleware\PrelaunchMode;
 use JamesGifford\Hold\Http\Middleware\PreventRequestsDuringMaintenance;
 use JamesGifford\Hold\Listeners\ScheduleRestoreAnnouncement;
 use JamesGifford\Hold\Listeners\SendHoldSignupReceipt;
+use JamesGifford\Hold\Listeners\SendSignupVerification;
 use JamesGifford\Hold\Listeners\SendTeamHoldNotice;
 
 /**
@@ -102,12 +103,14 @@ class HoldServiceProvider extends ServiceProvider
      * events, so entering/leaving it triggers the team notice and (optionally)
      * the delayed restore announcement. The prelaunch equivalents are wired
      * directly by the enable/disable commands. HoldSignupCaptured drives the
-     * optional receipt.
+     * verification email (when required) and the optional receipt — in that
+     * order, since verification supersedes the receipt when both would apply.
      */
     protected function registerEventListeners(): void
     {
         Event::listen(MaintenanceModeEnabled::class, SendTeamHoldNotice::class);
         Event::listen(MaintenanceModeDisabled::class, ScheduleRestoreAnnouncement::class);
+        Event::listen(HoldSignupCaptured::class, SendSignupVerification::class);
         Event::listen(HoldSignupCaptured::class, SendHoldSignupReceipt::class);
     }
 
@@ -150,9 +153,12 @@ class HoldServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views/prelaunch.blade.php' => resource_path('views/vendor/hold/prelaunch.blade.php'),
             __DIR__.'/../resources/views/maintenance.blade.php' => resource_path('views/vendor/hold/maintenance.blade.php'),
+            __DIR__.'/../resources/views/verified.blade.php' => resource_path('views/vendor/hold/verified.blade.php'),
+            __DIR__.'/../resources/views/unsubscribed.blade.php' => resource_path('views/vendor/hold/unsubscribed.blade.php'),
             __DIR__.'/../resources/views/mail/announcement.blade.php' => resource_path('views/vendor/hold/mail/announcement.blade.php'),
             __DIR__.'/../resources/views/mail/team.blade.php' => resource_path('views/vendor/hold/mail/team.blade.php'),
             __DIR__.'/../resources/views/mail/receipt.blade.php' => resource_path('views/vendor/hold/mail/receipt.blade.php'),
+            __DIR__.'/../resources/views/mail/verify.blade.php' => resource_path('views/vendor/hold/mail/verify.blade.php'),
             __DIR__.'/../resources/views/errors/503.blade.php' => resource_path('views/errors/503.blade.php'),
         ], 'jamesgifford-hold-views');
 

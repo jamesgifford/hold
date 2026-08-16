@@ -5,6 +5,7 @@ declare(strict_types=1);
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
 use JamesGifford\Hold\Notifications\ServiceRestored;
+use JamesGifford\Hold\Notifications\SignupVerification;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
 
 return [
@@ -194,11 +195,13 @@ return [
         // Set this to 0 if an immediate send on a sync queue is what you want.
         'announce_delay_minutes' => 10,
 
-        // Subject lines for the two announcements. The body copy lives in the
-        // published email templates (resources/views/vendor/hold/mail/), but the
-        // subjects are set here so you can adjust them without republishing a view.
+        // Subject lines for the two announcements and the verification email.
+        // The body copy lives in the published email templates
+        // (resources/views/vendor/hold/mail/), but the subjects are set here
+        // so you can adjust them without republishing a view.
         'subject_launch' => 'We\'re live!',
         'subject_restored' => 'We\'re back online',
+        'subject_verify' => 'Confirm your email address',
 
         // Notification classes. Override any with your own subclass FQCN.
         'classes' => [
@@ -206,7 +209,31 @@ return [
             'launch_announcement' => LaunchAnnouncement::class,
             'service_restored' => ServiceRestored::class,
             'signup_receipt' => HoldSignupReceipt::class,
+            'signup_verification' => SignupVerification::class,
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email verification
+    |--------------------------------------------------------------------------
+    |
+    | Double opt-in: a new signup must click a link in the verification email
+    | before the announcer will ever email it. Protects against one person
+    | signing another's address up without their knowledge.
+    |
+    */
+
+    'verification' => [
+
+        // Require verification before an address is emailed. When false, a
+        // signup is stamped verified at capture time instead — no address is
+        // ever left permanently unreachable, whichever way this is set.
+        'required' => true,
+
+        // How many days a verification link stays valid. An unverified
+        // signup can always re-submit the form for a fresh one.
+        'link_lifetime_days' => 7,
     ],
 
     /*

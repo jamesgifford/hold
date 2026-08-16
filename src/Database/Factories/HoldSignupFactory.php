@@ -26,10 +26,18 @@ class HoldSignupFactory extends Factory
 
     public function definition(): array
     {
+        // Verified by default (matching requested_at): most tests exercise
+        // behavior downstream of a confirmed signup, and verification itself
+        // didn't exist before 1.4.0 — defaulting unverified would silently
+        // change the meaning of every pre-existing test. Use unverified()
+        // for the cases that specifically need a pending row.
+        $requestedAt = Carbon::now();
+
         return [
             'email' => $this->faker->unique()->safeEmail(),
             'context' => $this->faker->randomElement(HoldSignupContext::cases()),
-            'requested_at' => Carbon::now(),
+            'requested_at' => $requestedAt,
+            'verified_at' => $requestedAt,
             'ip_address' => $this->faker->ipv4(),
             'user_agent' => $this->faker->userAgent(),
             'notified_at' => null,
@@ -55,5 +63,10 @@ class HoldSignupFactory extends Factory
     public function unsubscribed(): static
     {
         return $this->state(['unsubscribed_at' => Carbon::now()]);
+    }
+
+    public function unverified(): static
+    {
+        return $this->state(['verified_at' => null]);
     }
 }

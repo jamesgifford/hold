@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (! Schema::hasColumn('hold_signups', 'verified_at')) {
+            Schema::table('hold_signups', function (Blueprint $table) {
+                $table->timestamp('verified_at')->nullable()->index();
+            });
+        }
+
+        // Grandfather every row this migration finds: it signed up under the
+        // pre-1.4.0, single-opt-in rules, so treat it as already verified
+        // rather than silently dropping it from every future announcement.
+        // This is a one-time backfill by design — it runs once, immediately
+        // after the column is added, before any row can legitimately be
+        // "genuinely awaiting verification."
+        DB::table('hold_signups')
+            ->whereNull('verified_at')
+            ->update(['verified_at' => DB::raw('requested_at')]);
+    }
+
+    public function down(): void
+    {
+        if (Schema::hasColumn('hold_signups', 'verified_at')) {
+            Schema::table('hold_signups', function (Blueprint $table) {
+                $table->dropColumn('verified_at');
+            });
+        }
+    }
+};

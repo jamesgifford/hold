@@ -8,6 +8,7 @@ use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
 use JamesGifford\Hold\Notifications\ServiceRestored;
+use JamesGifford\Hold\Notifications\SignupVerification;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
 
 /*
@@ -87,4 +88,32 @@ it('renders edited announcement $copy for the matching context only', function (
     expect($restore)
         ->not->toContain('EDITED-LAUNCH-COPY')   // the maintenance set is untouched
         ->toContain('back!');
+});
+
+// --- Unsubscribe footer link ------------------------------------------------
+
+it('renders the unsubscribe footer link, which actually unsubscribes when visited', function () {
+    $signup = HoldSignup::factory()->prelaunch()->create();
+    $notification = new LaunchAnnouncement($signup);
+    $mail = $notification->toMail(new AnonymousNotifiable);
+
+    expect(renderMailBody($notification))->toContain('Unsubscribe');
+    expect($mail->viewData['unsubscribeUrl'] ?? null)->not->toBeNull();
+
+    $this->get($mail->viewData['unsubscribeUrl'])->assertOk();
+    expect($signup->fresh()->unsubscribed_at)->not->toBeNull();
+});
+
+it('renders the unsubscribe footer link on the receipt too', function () {
+    $signup = HoldSignup::factory()->prelaunch()->create();
+
+    expect(renderMailBody(new HoldSignupReceipt($signup)))->toContain('Unsubscribe');
+});
+
+it('renders no unsubscribe footer in the team notice or the verification email', function () {
+    $team = renderMailBody(new TeamHoldEnabled(HoldSignupContext::Prelaunch));
+    $verify = renderMailBody(new SignupVerification(HoldSignup::factory()->unverified()->create(), 'https://example.test/verify'));
+
+    expect(strtolower($team))->not->toContain('unsubscribe');
+    expect(strtolower($verify))->not->toContain('unsubscribe');
 });

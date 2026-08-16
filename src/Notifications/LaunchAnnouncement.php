@@ -44,6 +44,6 @@ class LaunchAnnouncement extends Notification
                 'context' => HoldSignupContext::Prelaunch,
             ]);
 
-        return $this->applyFrom($mail);
+        return $this->applyFrom($this->applyUnsubscribe($mail, $this->signup));
     }
 }

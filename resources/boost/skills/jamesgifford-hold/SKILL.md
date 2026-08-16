@@ -1,6 +1,6 @@
 ---
 name: jamesgifford-hold
-description: Use when working on "coming soon" (pre-launch) or maintenance holding pages, email signup capture, or launch/restore announcements in an application that uses the jamesgifford/hold package. Covers prelaunch mode, native maintenance mode, the signup/preview routes, the published App\Models\HoldSignup model, the unsubscribe data contract, notification overrides, and the jamesgifford:hold:* Artisan commands.
+description: Use when working on "coming soon" (pre-launch) or maintenance holding pages, email signup capture, email verification, unsubscribe, or launch/restore announcements in an application that uses the jamesgifford/hold package. Covers prelaunch mode, native maintenance mode, the signup/preview/verify/unsubscribe routes, the published App\Models\HoldSignup model, notification overrides, and the jamesgifford:hold:* Artisan commands.
 ---
 
 # JamesGifford Hold
@@ -52,17 +52,34 @@ Both holding pages POST to the `hold.signup` route. Behavior to rely on:
 - Context (`prelaunch` vs `maintenance`) is detected server-side; don't trust a
   posted context field.
 - One row per email. A same-cycle duplicate (row not yet notified) writes NOTHING
-  (byte-identical). A re-signup during a LATER hold (row already notified) re-arms
-  the row: `notified_at` back to null, `requested_at` to now, current context, ip/ua
-  refreshed — `unsubscribed_at` is NEVER touched. Exactly one notification per hold.
+  (byte-identical) — UNLESS the row is unverified, in which case the verification
+  email is re-sent (still no write). A re-signup during a LATER hold (row already
+  notified) re-arms the row: `notified_at` back to null, `requested_at` to now,
+  current context, ip/ua refreshed — `unsubscribed_at` and `verified_at` are NEVER
+  touched by a re-arm. Exactly one notification per hold.
 - `hold.preview` is a signed route that sets the bypass cookie so you can view
   the real app behind the prelaunch page.
 
-**Unsubscribe is an app-owned data contract.** The package keeps `unsubscribed_at`
-and excludes those rows from every email (announce + receipt), but ships NO
-user-facing unsubscribe (no route, no link). Set/clear it via `HoldSignup::unsubscribe()`
-/ `HoldSignup::resubscribe()`, or the operator command `jamesgifford:hold:unsubscribe
-{email} {--resubscribe}`. The package never sets or clears it on its own.
+**Email verification (double opt-in).** `config('jamesgifford.hold.verification.required')`
+(default `true`): a new signup's `verified_at` stays null until it clicks a
+signed, expiring link in the `SignupVerification` email (`GET /verify`,
+`link_lifetime_days` default 7) — the announcer never emails an unverified
+row. When `required` is `false`, capture stamps `verified_at` immediately
+instead. `markVerified()` and the `verified()` scope are part of
+`HoldSignupContract`. Verification is permanent per address, not per hold —
+a re-arm never resets it.
+
+**Unsubscribe.** The package keeps `unsubscribed_at` and excludes those rows
+from every email (both announcements + the receipt). Every list email
+carries a signed, non-expiring opt-out link (`GET`/`POST /unsubscribe` — the
+POST is the RFC 8058 one-click endpoint, CSRF-exempt) plus `List-Unsubscribe`
+/ `List-Unsubscribe-Post` headers. `HoldSignup::unsubscribe()` /
+`->resubscribe()`, or the operator command
+`jamesgifford:hold:unsubscribe {email} {--resubscribe}`, are the
+server-side equivalents. The package NEVER clears `unsubscribed_at` except
+via a successful `/verify` click — not on re-arm, not from signing up again.
+This is deliberate: only proving mailbox access (verifying) can undo an
+opt-out, so a third party can't re-arm an address they don't own.
 
 ## Commands
 
@@ -80,9 +97,13 @@ user-facing unsubscribe (no route, no link). Set/clear it via `HoldSignup::unsub
   On a `sync` queue with a non-zero delay it REFUSES to schedule and says so —
   the change-of-mind window cannot exist there.
 - `jamesgifford:hold:announce` — email the launch/restore announcement now.
-  Idempotent (stamps `notified_at`, never double-sends). Flags: `--context=prelaunch|maintenance`
+  Idempotent (stamps `notified_at`, never double-sends) and only ever emails
+  verified, subscribed signups. Flags: `--context=prelaunch|maintenance`
   (inferred when one context has pending signups), `--dry-run` (report counts,
-  send nothing).
+  send nothing), `--yes` (skip the send confirmation prompt — required for a
+  non-interactive/`-n` run, which otherwise refuses), `--test=<address>`
+  (send one rendered announcement to that address as a rehearsal, no rows
+  touched, no prompt; mutually exclusive with `--dry-run`).
 - `jamesgifford:hold:uninstall` — remove everything published and drop the table.
   Flags: `--force` (unattended; also required to drop the table when the run
   cannot ask for confirmation, e.g. `-n`), `--keep-data` (keep the table +
@@ -91,7 +112,8 @@ user-facing unsubscribe (no route, no link). Set/clear it via `HoldSignup::unsub
   an explicit opt-in.
 - `jamesgifford:hold:unsubscribe {email}` — operator tool to set a signup's
   unsubscribe state. Flag: `--resubscribe` (clear it instead). This and the model
-  methods are the ONLY ways to change `unsubscribed_at`.
+  methods are the server-side equivalents of the self-service `/unsubscribe`
+  route.
 
 ## Configuration
 
@@ -108,8 +130,13 @@ Published to `config/jamesgifford/hold.php`:
   change-of-mind delay before an auto-announce sends). Auto-announce needs a queue
   that can defer AND a running worker; on `sync` it refuses rather than sending
   immediately. Set the delay to 0 to opt into an immediate send.
-- `notifications.subject_launch` / `notifications.subject_restored` — the two
-  announcement subject lines (body copy lives in the email templates).
+- `notifications.subject_launch` / `notifications.subject_restored` /
+  `notifications.subject_verify` — the announcement and verification-email
+  subject lines (body copy lives in the email templates).
+- `verification.required` (default `true`) — require a verify-link click
+  before the announcer will ever email a signup; `false` stamps `verified_at`
+  at capture instead. `verification.link_lifetime_days` (default 7) — how
+  long a verify link stays valid.
 - `spam.rate_limit_per_minute`, `spam.honeypot_field`.
 
 ## Customizing
@@ -144,17 +171,26 @@ Published to `config/jamesgifford/hold.php`:
   wins. Every user-visible string (incl. the `?hold=` success/error
   messages) is set via the `$copy` block, same top-of-file area (the
   `errors/503.blade.php` shim just includes the maintenance view).
+  `vendor/hold/verified.blade.php` / `vendor/hold/unsubscribed.blade.php`
+  are minimal siblings rendered after a `/verify` or `/unsubscribe` click —
+  no form/alert, so only `$bg`/`$accent`/`$text`/`$cardBg`/
+  `$cardShadowColor`/`$cardBlendWeight` and a small `$copy` (`title`,
+  `heading`, `body`, `link`), same derivation/config-tiering.
 - **Emails**: setup publishes one self-contained template per email —
-  `vendor/hold/mail/{announcement,team,receipt}.blade.php`. Each has top-of-file
-  blocks for the palette, an optional logo/wordmark header, and a `$copy` block
-  with the wording. The palette (`$bg`/`$accent`/`$text`/`$card`/`$muted`)
-  auto-derives from `$bg` via `JamesGifford\Hold\Support\ColorTheme`, same as
-  the holding pages, and goes through the same `Hold::appearance()`
-  config-tier (`appearance.mail.<property>` here instead of
-  `appearance.pages.<property>`) before falling back to that derivation —
-  plain PHP variables, not CSS custom properties (email clients support
-  those poorly). Subjects for the two announcements are config, not
-  template: `notifications.subject_launch` / `notifications.subject_restored`.
+  `vendor/hold/mail/{announcement,team,receipt,verify}.blade.php`. Each has
+  top-of-file blocks for the palette, an optional logo/wordmark header, and
+  a `$copy` block with the wording. The palette (`$bg`/`$accent`/`$text`/
+  `$card`/`$muted`) auto-derives from `$bg` via
+  `JamesGifford\Hold\Support\ColorTheme`, same as the holding pages, and
+  goes through the same `Hold::appearance()` config-tier
+  (`appearance.mail.<property>` here instead of `appearance.pages.<property>`)
+  before falling back to that derivation — plain PHP variables, not CSS
+  custom properties (email clients support those poorly).
+  `announcement.blade.php` / `receipt.blade.php` additionally render an
+  opt-out footer link (`$copy['unsubscribe']`, `$unsubscribeUrl`) only when
+  the route is registered; `verify.blade.php` and `team.blade.php` never
+  get one. Subjects are config, not template: `notifications.subject_launch`
+  / `notifications.subject_restored` / `notifications.subject_verify`.
 - **Notifications (structure/channels)**: to change more than copy, point a
   `notifications.classes` entry at your own Notification subclass — the package
   resolves the class at send time.
@@ -169,9 +205,19 @@ Published to `config/jamesgifford/hold.php`:
 - Do NOT toggle prelaunch mode by writing the flag file — use `jamesgifford:hold:enable prelaunch` / `disable`.
 - Do NOT try to run both holds at once — `enable` refuses while one is active; running native `down` while prelaunch is up auto-disables prelaunch.
 - Do NOT delete signup rows to unsubscribe — it's a soft state; use `HoldSignup::unsubscribe()`/`resubscribe()` or `jamesgifford:hold:unsubscribe`.
-- Do NOT build a user-facing unsubscribe from the package — it ships none; the app owns that decision. The package never sets/clears `unsubscribed_at` on its own.
+- Do NOT build a separate user-facing unsubscribe mechanism — the package
+  already ships one (`/unsubscribe`, GET+POST, plus `List-Unsubscribe`
+  headers on every list email). Point users at the link the email already
+  carries rather than inventing another route.
+- Do NOT assume signing up again clears an opt-out — it never does. Only a
+  successful `/verify` click clears `unsubscribed_at` (besides the operator
+  `--resubscribe` command).
 - Do NOT hardcode the route prefix — read `config('jamesgifford.hold.routes.prefix')`.
 - Do NOT assume `auto_announce_on_up` works on a `sync` queue — it deliberately
   refuses there, because the delay (and so the change-of-mind window) is discarded.
 - Do NOT point `models.signup` at a class that does not implement
-  `HoldSignupContract` — resolution throws rather than falling back silently.
+  `HoldSignupContract` (including `markVerified()`, added in 1.4.0) —
+  resolution throws rather than falling back silently.
+- Do NOT expect the announcer to email an unverified signup, whatever
+  `verification.required` is currently set to — the stamp-on-create rule
+  means only genuinely-pending rows are ever excluded.

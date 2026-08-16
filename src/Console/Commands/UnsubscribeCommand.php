@@ -11,10 +11,13 @@ use JamesGifford\Hold\Hold;
 /**
  * Operator tooling to set or clear a signup's unsubscribe state by email.
  *
- * Unsubscribe is an app-owned data contract: the package respects unsubscribed_at
- * everywhere but ships NO public/user-facing way to set it. This command (and the
- * HoldSignup::unsubscribe()/resubscribe() model methods) are the only means, invoked
- * deliberately by a server operator or the app's own features.
+ * The package respects unsubscribed_at everywhere — every list email (the
+ * two announcements and the receipt) carries a signed opt-out link and
+ * List-Unsubscribe headers, and the /unsubscribe route is the normal,
+ * self-service way an address gets excluded. This command (and the
+ * HoldSignup::unsubscribe()/resubscribe() model methods) is the *operator*
+ * path for the same thing — set or clear it by email without the address
+ * owner clicking anything, e.g. in response to a support request.
  */
 final class UnsubscribeCommand extends Command
 {

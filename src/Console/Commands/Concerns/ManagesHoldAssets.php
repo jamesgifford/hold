@@ -64,10 +64,11 @@ trait ManagesHoldAssets
 
     /**
      * Published views: [source => target]. The holding-page templates (prelaunch,
-     * maintenance) and the email templates (announcement, team, receipt) go to
-     * the vendor views path — edit them there. The 503 view is a thin shim that
-     * goes to the app's errors directory so Laravel renders it during native
-     * maintenance mode; it just includes the maintenance template.
+     * maintenance, verified, unsubscribed) and the email templates (announcement,
+     * team, receipt, verify) go to the vendor views path — edit them there. The
+     * 503 view is a thin shim that goes to the app's errors directory so Laravel
+     * renders it during native maintenance mode; it just includes the maintenance
+     * template.
      *
      * @return array<string, string>
      */
@@ -80,9 +81,12 @@ trait ManagesHoldAssets
         return [
             $root.'/prelaunch.blade.php' => $vendor.DIRECTORY_SEPARATOR.'prelaunch.blade.php',
             $root.'/maintenance.blade.php' => $vendor.DIRECTORY_SEPARATOR.'maintenance.blade.php',
+            $root.'/verified.blade.php' => $vendor.DIRECTORY_SEPARATOR.'verified.blade.php',
+            $root.'/unsubscribed.blade.php' => $vendor.DIRECTORY_SEPARATOR.'unsubscribed.blade.php',
             $root.'/mail/announcement.blade.php' => $mail.'announcement.blade.php',
             $root.'/mail/team.blade.php' => $mail.'team.blade.php',
             $root.'/mail/receipt.blade.php' => $mail.'receipt.blade.php',
+            $root.'/mail/verify.blade.php' => $mail.'verify.blade.php',
             $root.'/errors/503.blade.php' => $this->laravel->resourcePath('views'.DIRECTORY_SEPARATOR.'errors'.DIRECTORY_SEPARATOR.'503.blade.php'),
         ];
     }

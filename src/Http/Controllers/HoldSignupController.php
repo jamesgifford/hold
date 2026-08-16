@@ -14,6 +14,7 @@ use JamesGifford\Hold\Events\HoldSignupCaptured;
 use JamesGifford\Hold\Hold;
 use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\HoldState;
+use JamesGifford\Hold\Support\Verification;
 
 /**
  * Captures a public email signup from either holding page.
@@ -79,6 +80,11 @@ final class HoldSignupController
                 'email' => $email,
                 'context' => $context,
                 'requested_at' => Carbon::now(),
+                // Stamped now when verification isn't required, so a row is
+                // never permanently unreachable regardless of which way this
+                // config is set; left null otherwise for
+                // SendSignupVerification to act on.
+                'verified_at' => $this->verificationRequired() ? null : Carbon::now(),
                 'ip_address' => $request->ip(),
                 'user_agent' => $this->userAgent($request),
             ]);
@@ -88,12 +94,22 @@ final class HoldSignupController
             return;
         }
 
-        // Same cycle (not yet notified): leave the row byte-identical.
+        // Same cycle (not yet notified): leave the row byte-identical. An
+        // unverified row still gets a fresh verification email — sent
+        // directly, not via HoldSignupCaptured (nothing about the row
+        // changed) — so a signup that missed or lost the first link isn't
+        // stuck; the per-IP rate limit above is its only throttle.
         if ($existing->notified_at === null) {
+            if ($existing->verified_at === null) {
+                Verification::send($existing);
+            }
+
             return;
         }
 
-        // A new hold: re-arm. Never touch unsubscribed_at in either direction.
+        // A new hold: re-arm. Never touch unsubscribed_at in either
+        // direction, and never touch verified_at — ownership, once proven,
+        // carries forward across every later hold.
         $existing->forceFill([
             'context' => $context,
             'requested_at' => Carbon::now(),
@@ -103,6 +119,11 @@ final class HoldSignupController
         ])->save();
 
         event(new HoldSignupCaptured($existing));
+    }
+
+    private function verificationRequired(): bool
+    {
+        return (bool) config('jamesgifford.hold.verification.required', true);
     }
 
     private function userAgent(Request $request): string

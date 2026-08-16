@@ -87,6 +87,12 @@
             'button'  => 'Return to the site',
             'url'     => config('app.url'),
         ],
+        // Shared by both modes, like $footnote below — link text for the
+        // opt-out footer. Renders (with the footer's own spacing) only when
+        // $unsubscribeUrl was actually passed in — see
+        // FormatsHoldMail::applyUnsubscribe() — so a template published
+        // before this key existed just gets no footer, not an error.
+        'unsubscribe' => 'Unsubscribe',
     ];
     // Small line beneath the card (shared by both modes).
     $footnote = 'You\'re receiving this because you asked to be notified.';
@@ -144,6 +150,13 @@
                         <tr>
                             <td style="padding:20px 40px 0; font-size:13px; line-height:1.5; color:{{ $muted }};">
                                 {{ $footnote }}
+                            </td>
+                        </tr>
+                    @endif
+                    @if (! empty($unsubscribeUrl))
+                        <tr>
+                            <td style="padding:8px 40px 0; font-size:12px; line-height:1.5; color:{{ $muted }};">
+                                <a href="{{ $unsubscribeUrl }}" style="color:{{ $muted }}; text-decoration:underline;">{{ $copy['unsubscribe'] ?? 'Unsubscribe' }}</a>
                             </td>
                         </tr>
                     @endif

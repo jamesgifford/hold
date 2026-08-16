@@ -26,6 +26,7 @@ use JamesGifford\Hold\HoldSignupContext;
  * @property string|null $user_agent
  * @property Carbon|null $notified_at
  * @property Carbon|null $unsubscribed_at
+ * @property Carbon|null $verified_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  *
@@ -42,4 +43,9 @@ interface HoldSignupContract
      * Clear the unsubscribe state. Idempotent.
      */
     public function resubscribe(): void;
+
+    /**
+     * Confirm this address's ownership. Idempotent.
+     */
+    public function markVerified(): void;
 }

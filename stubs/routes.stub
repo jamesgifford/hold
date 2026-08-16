@@ -6,6 +6,8 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 use JamesGifford\Hold\Http\Controllers\HoldSignupController;
 use JamesGifford\Hold\Http\Controllers\PreviewController;
+use JamesGifford\Hold\Http\Controllers\UnsubscribeController;
+use JamesGifford\Hold\Http\Controllers\VerifyController;
 
 /*
  * Hold package routes — self-hosted copy.
@@ -31,3 +33,20 @@ Route::post('signup', [HoldSignupController::class, 'store'])
 Route::get('preview', PreviewController::class)
     ->name('hold.preview')
     ->middleware('signed');
+
+Route::get('verify', VerifyController::class)
+    ->name('hold.verify')
+    ->middleware('signed');
+
+// Non-expiring signature (URL::signedRoute, not temporarySignedRoute) — old
+// emails must keep working. The POST is the RFC 8058 one-click endpoint an
+// email client calls automatically, carrying no CSRF token, on the exact
+// same signed URL as the GET link.
+Route::get('unsubscribe', UnsubscribeController::class)
+    ->name('hold.unsubscribe')
+    ->middleware('signed');
+
+Route::post('unsubscribe', UnsubscribeController::class)
+    ->name('hold.unsubscribe')
+    ->middleware('signed')
+    ->withoutMiddleware([PreventRequestForgery::class]);

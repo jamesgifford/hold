@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Events\MaintenanceModeDisabled;
 use Illuminate\Foundation\Events\MaintenanceModeEnabled;
+use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -15,7 +17,22 @@ use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
 use JamesGifford\Hold\Notifications\ServiceRestored;
+use JamesGifford\Hold\Notifications\SignupVerification;
 use JamesGifford\Hold\Notifications\TeamHoldEnabled;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\Header\Headers;
+
+/** The headers withSymfonyMessage() callbacks apply — only visible once run against a real Symfony message. */
+function symfonyHeadersFor(MailMessage $mail): Headers
+{
+    $message = new Email;
+
+    foreach ($mail->callbacks as $callback) {
+        $callback($message);
+    }
+
+    return $message->getHeaders();
+}
 
 afterEach(function () {
     app(HoldState::class)->disable();
@@ -241,6 +258,7 @@ it('falls back to the package receipt when the config omits classes', function (
     Notification::fake();
     config()->set('jamesgifford.hold.notifications.classes', null);
     config()->set('jamesgifford.hold.notifications.send_signup_receipt', true);
+    config()->set('jamesgifford.hold.verification.required', false);
 
     $this->post('hold/signup', ['email' => 'stale@example.com', 'context' => 'prelaunch']);
 
@@ -249,13 +267,24 @@ it('falls back to the package receipt when the config omits classes', function (
 
 // --- Signup receipt --------------------------------------------------------
 
-it('sends a receipt on capture when the receipt option is enabled', function () {
+it('sends a receipt on capture when the receipt option is enabled and verification is off', function () {
     Notification::fake();
     config()->set('jamesgifford.hold.notifications.send_signup_receipt', true);
+    config()->set('jamesgifford.hold.verification.required', false);
 
     $this->post('hold/signup', ['email' => 'receipt@example.com', 'context' => 'prelaunch']);
 
     Notification::assertSentOnDemand(HoldSignupReceipt::class);
+});
+
+it('supersedes the receipt with the verification email when verification is required, even with the receipt enabled', function () {
+    Notification::fake();
+    config()->set('jamesgifford.hold.notifications.send_signup_receipt', true);
+
+    $this->post('hold/signup', ['email' => 'superseded@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemandTimes(HoldSignupReceipt::class, 0);
+    Notification::assertSentOnDemandTimes(SignupVerification::class, 1);
 });
 
 it('sends no receipt on capture by default', function () {
@@ -263,5 +292,89 @@ it('sends no receipt on capture by default', function () {
 
     $this->post('hold/signup', ['email' => 'noreceipt@example.com', 'context' => 'prelaunch']);
 
-    Notification::assertNothingSent();
+    // Not assertNothingSent(): verification.required defaults true, so the
+    // verification email still goes out — only the optional receipt doesn't.
+    Notification::assertSentOnDemandTimes(HoldSignupReceipt::class, 0);
+});
+
+// --- Signup verification -----------------------------------------------
+
+it('sends the verification email for a new signup when verification is required (the default)', function () {
+    Notification::fake();
+
+    $this->post('hold/signup', ['email' => 'verify-new@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemand(
+        SignupVerification::class,
+        fn (SignupVerification $notification, array $channels, $notifiable) => $notifiable->routes['mail'] === 'verify-new@example.com',
+    );
+});
+
+it('sends no verification email for a new signup when verification is off', function () {
+    Notification::fake();
+    config()->set('jamesgifford.hold.verification.required', false);
+
+    $this->post('hold/signup', ['email' => 'verify-off@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemandTimes(SignupVerification::class, 0);
+});
+
+it('does not re-verify a re-armed signup that is already verified and still subscribed', function () {
+    // Realistic re-arm: the announcer only ever notifies verified rows (once
+    // Announcer::targets() adds ->verified(), in a later task), so a
+    // previously-notified row is always already-verified too — re-proving
+    // ownership on every hold would be pure friction for an address already
+    // known good and never opted out.
+    Notification::fake();
+    HoldSignup::factory()->notified()->create(['email' => 'rearm@example.com']);
+
+    $this->post('hold/signup', ['email' => 'rearm@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemandTimes(SignupVerification::class, 0);
+});
+
+it('sends no verification email re-arming a previously notified signup when verification is off', function () {
+    Notification::fake();
+    config()->set('jamesgifford.hold.verification.required', false);
+    HoldSignup::factory()->notified()->create(['email' => 'rearm-off@example.com']);
+
+    $this->post('hold/signup', ['email' => 'rearm-off@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemandTimes(SignupVerification::class, 0);
+});
+
+it('sends verification to an opted-out address that re-signs up, so verifying can clear the opt-out', function () {
+    Notification::fake();
+    HoldSignup::factory()->notified()->unsubscribed()->create(['email' => 'optout-resignup@example.com']);
+
+    $this->post('hold/signup', ['email' => 'optout-resignup@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemand(SignupVerification::class);
+});
+
+// --- Unsubscribe headers -----------------------------------------------
+
+it('carries List-Unsubscribe headers on the two announcements and the receipt', function () {
+    $mails = [
+        (new LaunchAnnouncement(HoldSignup::factory()->prelaunch()->create()))->toMail(new AnonymousNotifiable),
+        (new ServiceRestored(HoldSignup::factory()->maintenance()->create()))->toMail(new AnonymousNotifiable),
+        (new HoldSignupReceipt(HoldSignup::factory()->prelaunch()->create()))->toMail(new AnonymousNotifiable),
+    ];
+
+    foreach ($mails as $mail) {
+        $headers = symfonyHeadersFor($mail);
+
+        expect($headers->has('List-Unsubscribe'))->toBeTrue();
+        expect($headers->get('List-Unsubscribe-Post')->getBodyAsString())->toBe('List-Unsubscribe=One-Click');
+    }
+});
+
+it('carries no List-Unsubscribe headers on the team notice or the verification email', function () {
+    $team = (new TeamHoldEnabled(HoldSignupContext::Prelaunch))->toMail(new AnonymousNotifiable);
+    $verify = (new SignupVerification(HoldSignup::factory()->unverified()->create(), 'https://example.test/verify'))
+        ->toMail(new AnonymousNotifiable);
+
+    foreach ([$team, $verify] as $mail) {
+        expect(symfonyHeadersFor($mail)->has('List-Unsubscribe'))->toBeFalse();
+    }
 });

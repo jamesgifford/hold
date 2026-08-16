@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace JamesGifford\Hold\Notifications\Concerns;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
+use Symfony\Component\Mime\Email;
 
 /**
- * Shared mail formatting for the package notifications: the optional From
- * override. The package ships no user-facing unsubscribe link (unsubscribe is an
- * app-owned data contract — see the HoldSignup model + jamesgifford:hold:unsubscribe).
+ * Shared mail formatting for the package's list notifications: the optional
+ * From override, and the opt-out link + List-Unsubscribe headers every list
+ * email (the two announcements and the receipt) carries.
  */
 trait FormatsHoldMail
 {
@@ -26,5 +30,29 @@ trait FormatsHoldMail
         }
 
         return $mail;
+    }
+
+    /**
+     * Add the opt-out link (as $unsubscribeUrl in the view data) and the
+     * RFC 8058 List-Unsubscribe / List-Unsubscribe-Post headers. Null-safe
+     * when the `hold.unsubscribe` route isn't registered (routes.register
+     * => false and no self-hosted routes wired) — the mail still sends,
+     * just without the link or headers, matching Verification::url()'s
+     * degradation for the same config choice.
+     */
+    protected function applyUnsubscribe(MailMessage $mail, Model $signup): MailMessage
+    {
+        if (! Route::has('hold.unsubscribe')) {
+            return $mail;
+        }
+
+        $url = URL::signedRoute('hold.unsubscribe', ['signup' => $signup->getKey()]);
+
+        $mail->viewData['unsubscribeUrl'] = $url;
+
+        return $mail->withSymfonyMessage(function (Email $message) use ($url): void {
+            $message->getHeaders()->addTextHeader('List-Unsubscribe', "<{$url}>");
+            $message->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+        });
     }
 }

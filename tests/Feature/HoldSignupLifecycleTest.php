@@ -8,6 +8,7 @@ use JamesGifford\Hold\Announcements\Announcer;
 use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\LaunchAnnouncement;
+use JamesGifford\Hold\Notifications\SignupVerification;
 
 it('sets requested_at on a new signup', function () {
     $this->post('hold/signup', ['email' => 'new@example.com', 'context' => 'prelaunch'])
@@ -90,4 +91,55 @@ it('notifies a re-armed signup exactly once', function () {
 
     app(Announcer::class)->send(HoldSignupContext::Prelaunch);
     Notification::assertSentOnDemandTimes(LaunchAnnouncement::class, 1);
+});
+
+// --- Email verification ---------------------------------------------------
+
+it('stamps verified_at at creation when verification is off', function () {
+    config()->set('jamesgifford.hold.verification.required', false);
+
+    $this->post('hold/signup', ['email' => 'unrequired@example.com', 'context' => 'prelaunch'])
+        ->assertRedirect();
+
+    expect(HoldSignup::first()->verified_at)->not->toBeNull();
+});
+
+it('leaves verified_at null on a new signup when verification is required (the default)', function () {
+    $this->post('hold/signup', ['email' => 'pending@example.com', 'context' => 'prelaunch'])
+        ->assertRedirect();
+
+    expect(HoldSignup::first()->verified_at)->toBeNull();
+});
+
+it('re-sends verification for a same-cycle duplicate of an unverified row, writing nothing', function () {
+    Notification::fake();
+    HoldSignup::factory()->unverified()->create(['email' => 'dupe-unverified@example.com']);
+
+    $before = HoldSignup::first()->getAttributes();
+
+    $this->post('hold/signup', ['email' => 'dupe-unverified@example.com', 'context' => 'prelaunch'])
+        ->assertRedirect();
+
+    expect(HoldSignup::first()->getAttributes())->toBe($before);
+    Notification::assertSentOnDemandTimes(SignupVerification::class, 1);
+});
+
+it('sends no verification for a same-cycle duplicate of an already-verified row', function () {
+    Notification::fake();
+    HoldSignup::factory()->create(['email' => 'dupe-verified@example.com']);
+
+    $this->post('hold/signup', ['email' => 'dupe-verified@example.com', 'context' => 'prelaunch'])
+        ->assertRedirect();
+
+    Notification::assertSentOnDemandTimes(SignupVerification::class, 0);
+});
+
+it('keeps verified_at when re-arming a previously verified row', function () {
+    $signup = HoldSignup::factory()->prelaunch()->notified()->create(['email' => 'rearm-verified@example.com']);
+    $originalVerifiedAt = $signup->verified_at;
+
+    $this->post('hold/signup', ['email' => 'rearm-verified@example.com', 'context' => 'prelaunch'])
+        ->assertRedirect();
+
+    expect($signup->fresh()->verified_at->equalTo($originalVerifiedAt))->toBeTrue();
 });

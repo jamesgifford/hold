@@ -5,6 +5,131 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-16
+
+> ### Upgrading from 1.3.x — read this first
+>
+> This release contains **three breaking changes**. All three are compile-time
+> or boot-time failures with clear messages, or a documented behavior change —
+> not silent breakage.
+>
+> 1. **`HoldSignupContract` gains `markVerified(): void` and
+>    `@property Carbon|null $verified_at`.** A custom `models.signup` class
+>    published before this release needs both added. Re-publish the model
+>    (`php artisan jamesgifford:hold:setup`, accept the overwrite) or hand-add
+>    them; a class that exists but does not implement the contract raises a
+>    clear exception at boot rather than resolving to the wrong model.
+> 2. **Email verification is required by default.** A fresh signup no longer
+>    gets announced to until it clicks a link in the new `SignupVerification`
+>    email — `verification.required` defaults to `true`. Existing rows are
+>    grandfathered by the new upgrade migration (`verified_at = requested_at`),
+>    so nobody already on your list needs to re-verify; only *newly captured*
+>    signups are affected. Set `verification.required` to `false` in
+>    `config/jamesgifford/hold.php` to keep the 1.3.x single-opt-in behavior.
+> 3. **`jamesgifford:hold:announce` now confirms before a real send.** It
+>    prints the exact recipient count and asks `Send now?`; a non-interactive
+>    run (`-n`, the shape CI/deploy scripts use) refuses without `--yes`. Add
+>    `--yes` to any scripted `announce` invocation. `--dry-run` is unaffected.
+>
+> Also run `php artisan jamesgifford:hold:setup` after upgrading (safe to
+> re-run) — it publishes the new `add_verification_to_hold_signups_table`
+> migration and the three new views, without touching anything already
+> published. Then `php artisan migrate`.
+
+### Added
+
+- **Email verification (double opt-in).** A new signup must click a signed,
+  expiring link (`GET /{prefix}/verify`, `verification.link_lifetime_days`
+  default 7 days) before the announcer will ever email it — protection
+  against one person signing another's address up without their knowledge.
+  New `verified_at` column (nullable, indexed), `HoldSignup::markVerified()`
+  (idempotent) and `verified()` scope, `SignupVerification` notification +
+  `mail/verify.blade.php` template (same palette/header/`$copy` conventions
+  as the other three), `verified.blade.php` confirmation page, and config
+  `verification.required` (default `true`) / `verification.link_lifetime_days`
+  (default `7`). When `required` is `false`, capture stamps `verified_at`
+  immediately instead — no address is ever left permanently unreachable
+  whichever way this is set. A same-cycle duplicate submission of an
+  unverified row re-sends the verification email (still writing nothing to
+  the row); re-arming a verified row never resets `verified_at` — proven
+  ownership carries forward across every later hold, it is not per-hold like
+  `requested_at`/`notified_at`. `Announcer::targets()` now excludes
+  unverified rows unconditionally, so `jamesgifford:hold:announce` and
+  `Announcer::pending()` agree for free.
+- **User-facing opt-out.** Every list email (`LaunchAnnouncement`,
+  `ServiceRestored`, `HoldSignupReceipt` — not the team notice or the
+  verification email) now carries a signed, **non-expiring** opt-out link
+  (`GET`/`POST /{prefix}/unsubscribe`) and RFC 8058 `List-Unsubscribe` /
+  `List-Unsubscribe-Post` headers, so mail clients and providers can offer
+  their own native one-click unsubscribe UI. The POST is the RFC 8058
+  one-click endpoint (CSRF-exempt, like signup); the GET renders a new
+  `unsubscribed.blade.php` confirmation page. New `FormatsHoldMail::applyUnsubscribe()`
+  mints the link and headers, null-safe (degrades to no link/headers) when
+  `routes.register` is `false` and no self-hosted routes are wired.
+  **Clicking the verify link is the only thing that ever clears an
+  opt-out** — signing up again never does, so a third party who knows an
+  opted-out address cannot re-arm it; only the mailbox owner, by opening the
+  verification email, can. The operator command
+  (`jamesgifford:hold:unsubscribe`) and `HoldSignup::unsubscribe()`/
+  `resubscribe()` are unchanged and still work.
+- **Announce rehearsal.** A real `jamesgifford:hold:announce` send now
+  prints the exact recipient count and asks for confirmation before
+  sending; `--yes` skips the prompt for scripted/CI use, and a
+  non-interactive run without it refuses rather than silently emailing
+  everyone (`--dry-run` is unaffected either way). New `--test=<address>`
+  sends one fully rendered announcement to an arbitrary address without
+  touching any row, prompting, or requiring pending signups to exist — a
+  way to see exactly what a real send looks like before committing to one;
+  mutually exclusive with `--dry-run`.
+- `JamesGifford\Hold\Events\HoldSignupVerified` and `HoldSignupUnsubscribed`
+  — fired by the new routes; the package ships no listeners for either, they
+  exist as observability hooks for the app to build on.
+- `JamesGifford\Hold\Support\Verification` — mints and sends the
+  verification link (`url()`/`send()`), mirroring
+  `EnableCommand::printPreviewLink()`'s graceful degradation when routes
+  aren't registered.
+- A new upgrade migration, `add_verification_to_hold_signups_table`, adds
+  `verified_at` and backfills every existing row to grandfathered-verified
+  (`verified_at = requested_at`) — a one-time backfill that runs immediately
+  after the column is added, before any row can be genuinely
+  awaiting-verification. `PackageMigration` now manages a list of stems
+  (`STEMS`, replacing the single `STEM` constant) and publishes/tracks each
+  independently — re-running `setup` after upgrading publishes only the
+  migration(s) it doesn't already have, not a redundant second copy of the
+  original.
+
+### Fixed
+
+- **`jamesgifford:hold:setup` and `:uninstall` never actually published or
+  removed three of the four templates a fresh install needed** (found while
+  wiring the new ones): `ManagesHoldAssets::viewMap()` — the list these two
+  commands actually iterate, distinct from the `vendor:publish` tag array —
+  only listed the pre-1.4.0 views. Both lists now agree.
+
+### Changed
+
+- `HoldSignupReceipt` no longer sends when `verification.required` is `true`
+  (the default), even with `notifications.send_signup_receipt` also
+  enabled — the verification email is the signup-time confirmation in that
+  mode, so exactly one email goes out either way, never both.
+- `HoldSignup`'s docblock and `jamesgifford:hold:unsubscribe`'s no longer
+  describe unsubscribe as having no user-facing surface — it has one now
+  (see Added above); the "package never clears it except deliberately"
+  half of the contract is unchanged.
+
+### Documentation
+
+- README: new **Email verification** section; **Unsubscribe** rewritten in
+  full (self-service link + headers, the verify-click-only reset rule,
+  existing-installs re-publish caveat for the footer); config, command,
+  and publish-tag tables updated; views tree includes the two new pages and
+  `mail/verify.blade.php`; **The signup model contract** documents the
+  `markVerified()` breaking change with its own existing-installs note.
+- `resources/boost/skills/jamesgifford-hold/SKILL.md`: same surface
+  covered — verification, unsubscribe, the new routes, the `announce`
+  flags, the config keys, and updated `Do not` guardrails (no longer "don't
+  build a user-facing unsubscribe" — now "don't build a *second* one").
+
 ## [1.3.1] - 2026-08-16
 
 ### Fixed
@@ -411,7 +536,8 @@ launch/restore announcement notifications.
 - Documented config covering routes, prelaunch, notifications (including announcement subjects), mail from-address override, spam protection, and model resolution / publish location.
 - A shipped Laravel Boost skill documenting the package's modes, commands, and customization surface.
 
-[1.3.1]: https://github.com/jamesgifford/hold/compare/v1.3.0...HEAD
+[1.4.0]: https://github.com/jamesgifford/hold/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/jamesgifford/hold/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/jamesgifford/hold/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jamesgifford/hold/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jamesgifford/hold/compare/v1.1.0...v1.2.0

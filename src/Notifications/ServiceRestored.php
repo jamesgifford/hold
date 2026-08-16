@@ -44,6 +44,6 @@ class ServiceRestored extends Notification
                 'context' => HoldSignupContext::Maintenance,
             ]);
 
-        return $this->applyFrom($mail);
+        return $this->applyFrom($this->applyUnsubscribe($mail, $this->signup));
     }
 }

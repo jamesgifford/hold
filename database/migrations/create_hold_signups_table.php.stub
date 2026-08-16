@@ -38,10 +38,18 @@ return new class extends Migration
             // never deleted, so an address that resubscribes keeps its history.
             $table->timestamp('unsubscribed_at')->nullable();
 
+            // When this address's ownership was confirmed (config
+            // verification.required = true), or stamped at creation when
+            // verification is off — see HoldSignupController. The announcer
+            // only ever emails verified rows. Pre-1.4.0 rows are backfilled
+            // by the add_verification_to_hold_signups_table migration.
+            $table->timestamp('verified_at')->nullable();
+
             $table->timestamps();
 
             $table->index('context');
             $table->index('notified_at');
+            $table->index('verified_at');
         });
     }
 
