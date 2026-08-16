@@ -55,7 +55,7 @@ it('renders the prelaunch page default wording, incl. both form states', functio
         ->toContain('Email address')
         ->toContain('placeholder="you@example.com"')
         ->toContain('Notify me')
-        ->toContain('Unsubscribe anytime')
+        ->toContain('email you once')
         // Neither state message renders without the matching ?hold value.
         ->not->toContain('in touch when we launch')
         ->not->toContain('valid email address');
@@ -75,7 +75,7 @@ it('renders the maintenance page default wording, incl. both form states', funct
         ->toContain('right back')
         ->toContain('making some improvements')
         ->toContain('Notify me')
-        ->toContain('Unsubscribe anytime')
+        ->toContain('email you once')
         ->not->toContain('email you the moment')
         ->not->toContain('valid email address');
 

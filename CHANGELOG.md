@@ -36,6 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`#d0d1d3` → `#d0d1d4`); set `$inputBorder = '#d0d1d3';` to keep the
   previous exact value.
 
+### Fixed
+
+- **Removed the false "Unsubscribe anytime" claim** from the prelaunch and
+  maintenance pages' default `note` copy. The package ships no user-facing
+  unsubscribe mechanism (no route, no link — see
+  [Unsubscribe](#unsubscribe-an-app-owned-data-contract)), so the promise
+  was never true. The note now reads "We'll email you once when we're
+  live/back." — still accurate, since the package sends exactly one
+  notification per requested hold.
+
 ### Changed
 
 - **`--hold-card-bg`'s shipped default** is now computed (a blend of `$bg`

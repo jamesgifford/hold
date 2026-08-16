@@ -57,7 +57,7 @@
         'email_label'    => 'Email address',
         'email_placeholder' => 'you@example.com',
         'button'         => 'Notify me',
-        'note'           => 'We\'ll email you once when we\'re live. Unsubscribe anytime.',
+        'note'           => 'We\'ll email you once when we\'re live.',
         'honeypot_label' => 'Leave this field empty',  // off-screen; only bots see it
     ];
 
