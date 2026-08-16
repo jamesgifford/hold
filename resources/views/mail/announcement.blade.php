@@ -9,15 +9,29 @@
      * user-visible string lives in the blocks below.
      *
      * ── Palette ────────────────────────────────────────────────────────────
-     * Edit these five values to match your brand. They are plain PHP variables
-     * (NOT CSS custom properties — email clients support those poorly) and are
-     * interpolated into the inline styles below.
+     * Set $bg to reskin — everything below derives from it automatically.
+     * Leave a variable null to auto-derive it, or set it directly to
+     * override just that one value. See ColorTheme for the derivation math.
+     * Plain PHP variables (NOT CSS custom properties — email clients support
+     * those poorly), interpolated straight into the inline styles below.
      */
-    $bg     = '#f5f6f8';  // page background
-    $card   = '#ffffff';  // card background
-    $text   = '#1a1d24';  // body text
-    $muted  = '#6b7280';  // secondary / footnote text
-    $accent = '#2563eb';  // heading, button, links
+    $colorTheme = \JamesGifford\Hold\Support\ColorTheme::class;
+
+    $bg = '#f5f6f8';
+    $accent = null;    // set to override the automatic hue-matched derivation
+    $text = null;      // set to override the automatic light/dark derivation
+    $card = null;      // set to override the automatic card-background blend
+    $muted = null;     // set to override the automatic secondary/footnote-text blend
+    $cardBlendWeight = $colorTheme::CARD_BLEND_WEIGHT;    // 0-1; how strongly $card blends toward $text
+    $mutedBlendWeight = $colorTheme::MUTED_BLEND_WEIGHT;  // 0-1; how strongly $muted blends from $bg toward $text
+
+    // Derive anything left null above from $bg:
+    $accent ??= $colorTheme::accentFor($bg);
+    $text ??= $colorTheme::textFor($bg);
+    $card ??= $colorTheme::cardBackground($bg, $text, $cardBlendWeight);
+
+    // The footnote's real backdrop is $bg, not $card — it sits outside the card.
+    $muted ??= $colorTheme::blend($bg, $text, $mutedBlendWeight);
 
     /*
      * ── Spacing ──────────────────────────────────────────────────────────────

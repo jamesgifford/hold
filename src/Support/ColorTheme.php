@@ -34,6 +34,17 @@ final class ColorTheme
     public const CARD_BLEND_WEIGHT = 0.12;
 
     /**
+     * Blend weight for the mail templates' $muted (secondary/footnote) text:
+     * blend($bg, $text, weight). Chosen so the shipped light-palette default
+     * (#6f7277) lands within 0.006 of the previous hardcoded #6b7280's own
+     * contrast ratio against $bg (4.465 vs 4.471), while staying comfortably
+     * legible (6.69:1) against a dark $bg fixture (#111827). Like DARK_TEXT/
+     * LIGHT_TEXT's own selection, this targets "reads as de-emphasized," not
+     * a guaranteed WCAG ratio for every conceivable $bg.
+     */
+    public const MUTED_BLEND_WEIGHT = 0.61;
+
+    /**
      * Fixed hue-preserving accent saturation/lightness (0-1) — deliberately
      * vibrant, not $bg's own (often much softer, sometimes near-zero)
      * saturation/lightness. Validated across the full hue wheel: every hue

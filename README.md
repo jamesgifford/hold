@@ -293,12 +293,28 @@ control:
 
 **1. Edit colors, header, and copy — edit the published template.** Everything
 a developer changes lives in plain-PHP variable blocks at the very top of each
-file (email clients support CSS custom properties poorly, so these are
-interpolated into the inline styles). **Colors** — a five-value palette:
+file (email clients support CSS custom properties poorly, so these stay plain
+PHP variables interpolated into the inline styles — unlike the holding pages,
+which use CSS custom properties). **Colors** — a five-value palette, same
+`JamesGifford\Hold\Support\ColorTheme` math the holding pages use: set `$bg`
+alone and `$accent`/`$text`/`$card`/`$muted` all derive automatically (a
+hue-matched accent, light/dark text by WCAG contrast, a card background
+blended from `$bg` toward `$text`, and muted/footnote text blended from `$bg`
+toward `$text` at a lower weight so it reads as de-emphasized). Set any of the
+four directly for full manual control of just that one value:
 
 ```php
-$bg = '#f5f6f8'; $card = '#ffffff'; $text = '#1a1d24'; $muted = '#6b7280'; $accent = '#2563eb';
+$bg = '#f5f6f8';
+$accent = null;  // set to override the automatic hue-matched derivation
+$text = null;    // set to override the automatic light/dark derivation
+$card = null;    // set to override the automatic card-background blend
+$muted = null;   // set to override the automatic secondary/footnote-text blend
 ```
+
+`$cardBlendWeight` and `$mutedBlendWeight` (both default to the matching
+`ColorTheme` constant) tune how strongly `$card`/`$muted` depart from `$bg`
+while left to auto-derive — same convention as the holding pages'
+`$cardBlendWeight`.
 
 **Copy** — a `$copy` block holding every string. The announcement template keys
 it by hold mode; edit the wording (and the button label/URL) in place:

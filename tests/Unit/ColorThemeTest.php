@@ -128,3 +128,17 @@ it('picks a black shadow for a light background and a white glow for a dark one'
     expect(ColorTheme::betterContrast('#f5f6f8', '#000000', '#ffffff'))->toBe('#000000');
     expect(ColorTheme::betterContrast('#111827', '#000000', '#ffffff'))->toBe('#ffffff');
 });
+
+it('derives $muted that nearly reproduces the previous hardcoded contrast ratio at the light default palette', function () {
+    $muted = ColorTheme::blend('#f5f6f8', ColorTheme::DARK_TEXT, ColorTheme::MUTED_BLEND_WEIGHT);
+
+    expect($muted)->toBe('#6f7277');
+    expect(ColorTheme::contrastRatio($muted, '#f5f6f8'))->toBeGreaterThan(4.4)->toBeLessThan(4.5);
+});
+
+it('derives a comfortably legible $muted for a dark background', function () {
+    $muted = ColorTheme::blend('#111827', ColorTheme::LIGHT_TEXT, ColorTheme::MUTED_BLEND_WEIGHT);
+
+    expect($muted)->toBe('#9c9fa6');
+    expect(ColorTheme::contrastRatio($muted, '#111827'))->toBeGreaterThanOrEqual(4.5);
+});

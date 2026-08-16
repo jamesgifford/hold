@@ -35,6 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--hold-input-border`, which shifts by a single 8-bit rounding unit
   (`#d0d1d3` → `#d0d1d4`); set `$inputBorder = '#d0d1d3';` to keep the
   previous exact value.
+- **The three mail templates auto-adapt to `$bg` too.** Set `$bg` at the top
+  of `announcement.blade.php` / `team.blade.php` / `receipt.blade.php` and
+  `$accent`, `$text`, `$card`, and `$muted` now all derive automatically,
+  same `ColorTheme` math as the holding pages — previously each was a fixed
+  hardcoded value with no protection against a changed `$bg` clashing with
+  the accent or making text illegible. `$cardBlendWeight` and a new
+  `$mutedBlendWeight` (default `ColorTheme::MUTED_BLEND_WEIGHT`, `0.61`)
+  tune how strongly `$card`/`$muted` depart from `$bg`. Set any of the four
+  colors directly for full manual control of just that one value. Colors
+  stay plain PHP variables interpolated into inline styles (not CSS custom
+  properties — email clients support those poorly), unchanged from before.
 
 ### Fixed
 
@@ -64,6 +75,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no broadly-supported CSS function can do yet. The five `--hold-*` custom
   properties still exist and every other CSS rule still reads them
   unchanged; only where their values come from has moved.
+- **The mail templates' `$card` and `$accent` shipped defaults** are now
+  computed the same way as the holding pages' — `$card` shifts from a
+  hardcoded `#ffffff` to `#dbdcdf` (blend of `$bg` toward `$text`, weight
+  0.12); `$accent` shifts from a hardcoded `#2563eb` to `#2a5bc6`
+  (hue-matched to `$bg`, same blue family). `$text` is unchanged (`#1a1d24`
+  either way). Set `$card = '#ffffff';` / `$accent = '#2563eb';` to keep the
+  previous exact values.
+- **The mail templates' `$muted` shipped default** shifts from a hardcoded
+  `#6b7280` to `#6f7277` (blended from `$bg` toward `$text`) — chosen to
+  land within 0.006 of the previous value's own contrast ratio against
+  `$bg`, not an exact color match. Set `$muted = '#6b7280';` to keep the
+  previous exact value.
 
 ## [1.2.1] - 2026-08-15
 

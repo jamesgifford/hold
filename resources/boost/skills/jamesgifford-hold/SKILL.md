@@ -141,7 +141,11 @@ Published to `config/jamesgifford/hold.php`:
 - **Emails**: setup publishes one self-contained template per email —
   `vendor/hold/mail/{announcement,team,receipt}.blade.php`. Each has top-of-file
   blocks for the palette, an optional logo/wordmark header, and a `$copy` block
-  with the wording. Subjects for the two announcements are config, not template:
+  with the wording. The palette (`$accent`/`$text`/`$card`/`$muted`) auto-derives
+  from `$bg` via `JamesGifford\Hold\Support\ColorTheme`, same as the holding
+  pages, unless set directly, per-property, to override — plain PHP variables,
+  not CSS custom properties (email clients support those poorly). Subjects for
+  the two announcements are config, not template:
   `notifications.subject_launch` / `notifications.subject_restored`.
 - **Notifications (structure/channels)**: to change more than copy, point a
   `notifications.classes` entry at your own Notification subclass — the package
