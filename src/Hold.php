@@ -105,6 +105,35 @@ final class Hold
     }
 
     /**
+     * Resolve an appearance (color/derivation-weight) setting through its
+     * tiers: this template-group's config value, then the shared config
+     * value, then the package's own shipped default for that key (null for
+     * every property except 'bg') — never returns "missing," so a caller can
+     * `??=` straight onto its own auto-derivation without a third fallback.
+     *
+     * Falls back to the RAW shipped config (packageDefaults()), same as
+     * notificationClass() and for the same reason (see its docblock):
+     * ServiceProvider::mergeConfigFrom() merges only the top-level
+     * `jamesgifford.hold` key, so an already-published config file replaces
+     * the whole `appearance` array rather than merging into it — without
+     * this, a key added to `appearance` after an app already published its
+     * config would silently read as missing instead of falling through.
+     */
+    public static function appearance(string $key, string $group): mixed
+    {
+        $value = config("jamesgifford.hold.appearance.{$group}.{$key}")
+            ?? config("jamesgifford.hold.appearance.{$key}");
+
+        if ($value !== null) {
+            return $value;
+        }
+
+        $defaults = self::packageDefaults()['appearance'];
+
+        return $defaults[$group][$key] ?? $defaults[$key] ?? null;
+    }
+
+    /**
      * The package's own shipped config array.
      *
      * Read from the file rather than restated here, so the fallback above can

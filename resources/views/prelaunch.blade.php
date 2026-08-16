@@ -1,13 +1,18 @@
 @php
     $colorTheme = \JamesGifford\Hold\Support\ColorTheme::class;
+    $hold = \JamesGifford\Hold\Hold::class;
 
     /*
      * ── Palette ─────────────────────────────────────────────────────────────
      * Set $bg to reskin — everything below derives from it automatically.
      * Leave a variable null to auto-derive it, or set it directly to
      * override just that one value. See ColorTheme for the derivation math.
+     * Auto-derivation itself checks the appearance config section first
+     * (see Hold::appearance()) — set a value once in config to apply
+     * it everywhere, or scope it to just the holding pages or just the mail
+     * templates, without touching this file at all.
      */
-    $bg = '#f5f6f8';
+    $bg = null;
     $accent = null;            // set to override the automatic hue-matched derivation
     $text = null;              // set to override the automatic light/dark derivation
     $cardBg = null;            // set to override the automatic card-background blend
@@ -18,23 +23,24 @@
     $alertSuccessText = null;  // set to override the automatic success-alert text derivation
     $alertErrorBg = null;      // set to override the automatic error-alert background blend
     $alertErrorText = null;    // set to override the automatic error-alert text derivation
-    $cardBlendWeight = $colorTheme::CARD_BLEND_WEIGHT; // 0-1; how strongly $cardBg blends toward $text
+    $cardBlendWeight = $hold::appearance('card_blend_weight', 'pages') ?? $colorTheme::CARD_BLEND_WEIGHT; // 0-1; how strongly $cardBg blends toward $text
 
     // Derive anything left null above from $bg:
-    $accent ??= $colorTheme::accentFor($bg);
-    $text ??= $colorTheme::textFor($bg);
-    $cardBg ??= $colorTheme::cardBackground($bg, $text, $cardBlendWeight);
-    $inputBg ??= $bg;
-    $inputBorder ??= $colorTheme::blend($inputBg, $text, $colorTheme::INPUT_BORDER_BLEND_WEIGHT);
-    $cardShadowColor ??= $colorTheme::betterContrast($bg, '#000000', '#ffffff');
+    $bg ??= $hold::appearance('bg', 'pages');
+    $accent ??= $hold::appearance('accent', 'pages') ?? $colorTheme::accentFor($bg);
+    $text ??= $hold::appearance('text', 'pages') ?? $colorTheme::textFor($bg);
+    $cardBg ??= $hold::appearance('card', 'pages') ?? $colorTheme::cardBackground($bg, $text, $cardBlendWeight);
+    $inputBg ??= $hold::appearance('input_bg', 'pages') ?? $bg;
+    $inputBorder ??= $hold::appearance('input_border', 'pages') ?? $colorTheme::blend($inputBg, $text, $colorTheme::INPUT_BORDER_BLEND_WEIGHT);
+    $cardShadowColor ??= $hold::appearance('card_shadow_color', 'pages') ?? $colorTheme::betterContrast($bg, '#000000', '#ffffff');
     $cardShadowRgb = implode(', ', $colorTheme::toRgb($cardShadowColor));
 
     // Alerts tint $cardBg, not $bg — the alert renders inside the card, so
     // $cardBg is its real backdrop.
-    $alertSuccessBg ??= $colorTheme::blend($cardBg, $colorTheme::ALERT_SUCCESS_TINT, $colorTheme::ALERT_SUCCESS_BLEND_WEIGHT);
-    $alertSuccessText ??= $colorTheme::betterContrast($alertSuccessBg, $colorTheme::ALERT_SUCCESS_TEXT_LIGHT, $colorTheme::ALERT_SUCCESS_TEXT_DARK);
-    $alertErrorBg ??= $colorTheme::blend($cardBg, $colorTheme::ALERT_ERROR_TINT, $colorTheme::ALERT_ERROR_BLEND_WEIGHT);
-    $alertErrorText ??= $colorTheme::betterContrast($alertErrorBg, $colorTheme::ALERT_ERROR_TEXT_LIGHT, $colorTheme::ALERT_ERROR_TEXT_DARK);
+    $alertSuccessBg ??= $hold::appearance('alert_success_bg', 'pages') ?? $colorTheme::blend($cardBg, $colorTheme::ALERT_SUCCESS_TINT, $colorTheme::ALERT_SUCCESS_BLEND_WEIGHT);
+    $alertSuccessText ??= $hold::appearance('alert_success_text', 'pages') ?? $colorTheme::betterContrast($alertSuccessBg, $colorTheme::ALERT_SUCCESS_TEXT_LIGHT, $colorTheme::ALERT_SUCCESS_TEXT_DARK);
+    $alertErrorBg ??= $hold::appearance('alert_error_bg', 'pages') ?? $colorTheme::blend($cardBg, $colorTheme::ALERT_ERROR_TINT, $colorTheme::ALERT_ERROR_BLEND_WEIGHT);
+    $alertErrorText ??= $hold::appearance('alert_error_text', 'pages') ?? $colorTheme::betterContrast($alertErrorBg, $colorTheme::ALERT_ERROR_TEXT_LIGHT, $colorTheme::ALERT_ERROR_TEXT_DARK);
 
     /*
      * ── Copy ─────────────────────────────────────────────────────────────────

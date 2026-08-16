@@ -120,33 +120,39 @@ Published to `config/jamesgifford/hold.php`:
   Whatever it points at MUST implement `JamesGifford\Hold\Contracts\HoldSignupContract`
   (the published model already does); a class that does not raises an exception.
 - **Holding pages**: edit the published `vendor/hold/prelaunch.blade.php` /
-  `vendor/hold/maintenance.blade.php` — color via a single PHP variable
-  (`$bg`) at the top of the file; `$accent`, `$text`, `$cardBg`, `$inputBg`,
-  `$inputBorder`, `$cardShadowColor`, `$alertSuccessBg`,
-  `$alertSuccessText`, `$alertErrorBg`, and `$alertErrorText` all derive
-  automatically from `$bg` via `JamesGifford\Hold\Support\ColorTheme` (WCAG
-  contrast picks light or dark text; the card background is a blend of
-  `$bg` toward `$text`, strength tunable via `$cardBlendWeight`; the accent
-  matches `$bg`'s hue at a fixed vibrant saturation/lightness, darkened as
-  needed to stay legible on the submit button's fixed white label; the
-  input border blends toward `$text`; the card shadow picks black or white,
-  whichever contrasts more with `$bg`; the alert backgrounds tint `$cardBg`
-  toward a fixed semantic hue, and the alert text picks whichever of a
-  light-/dark-mode candidate contrasts more with that alert background)
-  unless set directly, per-property, to override — each of the ten
-  variables above defaults to `null` (auto-derive) and a real value wins
-  outright. Every user-visible string (incl. the `?hold=` success/error
+  `vendor/hold/maintenance.blade.php` — color via `$bg` (all eleven color/
+  weight variables default to `null`, including `$bg` itself); `$accent`,
+  `$text`, `$cardBg`, `$inputBg`, `$inputBorder`, `$cardShadowColor`,
+  `$alertSuccessBg`, `$alertSuccessText`, `$alertErrorBg`, and
+  `$alertErrorText` all derive automatically from `$bg` via
+  `JamesGifford\Hold\Support\ColorTheme` (WCAG contrast picks light or dark
+  text; the card background is a blend of `$bg` toward `$text`, strength
+  tunable via `$cardBlendWeight`; the accent matches `$bg`'s hue at a fixed
+  vibrant saturation/lightness, darkened as needed to stay legible on the
+  submit button's fixed white label; the input border blends toward
+  `$text`; the card shadow picks black or white, whichever contrasts more
+  with `$bg`; the alert backgrounds tint `$cardBg` toward a fixed semantic
+  hue, and the alert text picks whichever of a light-/dark-mode candidate
+  contrasts more with that alert background). Before auto-deriving, each
+  checks `config('jamesgifford.hold.appearance.*')` via
+  `JamesGifford\Hold\Hold::appearance()` — tiered this-template-variable >
+  `appearance.pages.<property>` > shared `appearance.<property>` >
+  auto-derive — so a value can be set once for every template, scoped to
+  just the pages, or overridden directly in this one file, which always
+  wins. Every user-visible string (incl. the `?hold=` success/error
   messages) is set via the `$copy` block, same top-of-file area (the
   `errors/503.blade.php` shim just includes the maintenance view).
 - **Emails**: setup publishes one self-contained template per email —
   `vendor/hold/mail/{announcement,team,receipt}.blade.php`. Each has top-of-file
   blocks for the palette, an optional logo/wordmark header, and a `$copy` block
-  with the wording. The palette (`$accent`/`$text`/`$card`/`$muted`) auto-derives
-  from `$bg` via `JamesGifford\Hold\Support\ColorTheme`, same as the holding
-  pages, unless set directly, per-property, to override — plain PHP variables,
-  not CSS custom properties (email clients support those poorly). Subjects for
-  the two announcements are config, not template:
-  `notifications.subject_launch` / `notifications.subject_restored`.
+  with the wording. The palette (`$bg`/`$accent`/`$text`/`$card`/`$muted`)
+  auto-derives from `$bg` via `JamesGifford\Hold\Support\ColorTheme`, same as
+  the holding pages, and goes through the same `Hold::appearance()`
+  config-tier (`appearance.mail.<property>` here instead of
+  `appearance.pages.<property>`) before falling back to that derivation —
+  plain PHP variables, not CSS custom properties (email clients support
+  those poorly). Subjects for the two announcements are config, not
+  template: `notifications.subject_launch` / `notifications.subject_restored`.
 - **Notifications (structure/channels)**: to change more than copy, point a
   `notifications.classes` entry at your own Notification subclass — the package
   resolves the class at send time.

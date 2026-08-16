@@ -46,6 +46,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   colors directly for full manual control of just that one value. Colors
   stay plain PHP variables interpolated into inline styles (not CSS custom
   properties — email clients support those poorly), unchanged from before.
+- **A new `config('jamesgifford.hold.appearance')` section sets colors once
+  for every template.** Every color/weight property across both holding
+  pages and all three mail templates now resolves through the new
+  `JamesGifford\Hold\Hold::appearance()`, tiered **this template's own PHP
+  variable (unchanged, always wins) → `appearance.pages.<property>` /
+  `appearance.mail.<property>` (scope a value to just one template family)
+  → shared `appearance.<property>` (applies to both) → the existing
+  `ColorTheme` auto-derivation (completely unchanged — this is a new tier
+  ahead of it, not a replacement)**. Lets a developer set `appearance.bg`
+  once to rebrand every template, or set `appearance.pages.bg` alone to
+  recolor just the holding pages while the mail templates keep their
+  default. Every key defaults to `null` (no override) except
+  `appearance.bg`, which defaults to `#f5f6f8` — nothing changes for an
+  install that doesn't touch this config.
 
 ### Fixed
 

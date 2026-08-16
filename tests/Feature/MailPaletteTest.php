@@ -36,7 +36,7 @@ it('renders the CTA button with the same accent used for the heading', function 
 
 it('derives light text, a dark-tinted card, and a legible muted for a dark background', function () {
     foreach (['announcement', 'team', 'receipt'] as $template) {
-        publishEditedMail($template, ["\$bg = '#f5f6f8';" => "\$bg = '#111827';"]);
+        publishEditedMail($template, ['$bg = null;' => "\$bg = '#111827';"]);
 
         expect(holdRender("hold::mail.{$template}", mailPaletteData($template)))
             ->toContain('background:#111827; color:#f5f6f8;')
@@ -93,7 +93,7 @@ it('lets an explicit $muted override bypass the derivation', function () {
 it('lets $cardBlendWeight tune how strongly $card blends toward $text', function () {
     foreach (['announcement', 'team', 'receipt'] as $template) {
         publishEditedMail($template, [
-            '$cardBlendWeight = $colorTheme::CARD_BLEND_WEIGHT;    // 0-1; how strongly $card blends toward $text' => '$cardBlendWeight = 0.5;    // 0-1; how strongly $card blends toward $text',
+            "\$cardBlendWeight = \$hold::appearance('card_blend_weight', 'mail') ?? \$colorTheme::CARD_BLEND_WEIGHT;    // 0-1; how strongly \$card blends toward \$text" => '$cardBlendWeight = 0.5;    // 0-1; how strongly $card blends toward $text',
         ]);
 
         $expected = ColorTheme::cardBackground('#f5f6f8', '#1a1d24', 0.5);
@@ -106,7 +106,7 @@ it('lets $cardBlendWeight tune how strongly $card blends toward $text', function
 it('lets $mutedBlendWeight tune how strongly $muted blends from $bg toward $text', function () {
     foreach (['announcement', 'team', 'receipt'] as $template) {
         publishEditedMail($template, [
-            '$mutedBlendWeight = $colorTheme::MUTED_BLEND_WEIGHT;  // 0-1; how strongly $muted blends from $bg toward $text' => '$mutedBlendWeight = 0.5;  // 0-1; how strongly $muted blends from $bg toward $text',
+            "\$mutedBlendWeight = \$hold::appearance('muted_blend_weight', 'mail') ?? \$colorTheme::MUTED_BLEND_WEIGHT;  // 0-1; how strongly \$muted blends from \$bg toward \$text" => '$mutedBlendWeight = 0.5;  // 0-1; how strongly $muted blends from $bg toward $text',
         ]);
 
         $expected = ColorTheme::blend('#f5f6f8', '#1a1d24', 0.5);

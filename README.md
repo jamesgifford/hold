@@ -304,7 +304,7 @@ toward `$text` at a lower weight so it reads as de-emphasized). Set any of the
 four directly for full manual control of just that one value:
 
 ```php
-$bg = '#f5f6f8';
+$bg = null;      // set to override the config default; falls back to #f5f6f8
 $accent = null;  // set to override the automatic hue-matched derivation
 $text = null;    // set to override the automatic light/dark derivation
 $card = null;    // set to override the automatic card-background blend
@@ -315,6 +315,14 @@ $muted = null;   // set to override the automatic secondary/footnote-text blend
 `ColorTheme` constant) tune how strongly `$card`/`$muted` depart from `$bg`
 while left to auto-derive — same convention as the holding pages'
 `$cardBlendWeight`.
+
+Before falling back to the `ColorTheme` derivation, every one of these left
+`null` first checks `config('jamesgifford.hold.appearance.*')` — see
+[Appearance](#appearance). That's how to rebrand every email at once without
+touching these three files: set `appearance.bg`/`appearance.accent` (etc.) in
+config, or scope a value to just the mail templates with
+`appearance.mail.bg`, leaving the holding pages at whatever their own default
+is.
 
 **Copy** — a `$copy` block holding every string. The announcement template keys
 it by hold mode; edit the wording (and the button label/URL) in place:
@@ -410,6 +418,7 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `prelaunch.bypass_cookie_name` | `hold_bypass` | Name of the preview bypass cookie. |
 | `prelaunch.bypass_cookie_lifetime_days` | `30` | Bypass cookie lifetime. |
 | `maintenance.retry_after` | `3600` | Seconds sent as the `Retry-After` header when maintenance is enabled via `enable maintenance` (`--retry` overrides; `0`/`null` omits it). Only applies to holds enabled through Hold — a bare `artisan down` needs `--retry` passed manually. |
+| `appearance.*` | see [Appearance](#appearance) | Set colors once for every template, or scope them to just the holding pages or just the mail templates. |
 | `notifications.team_addresses` | `[]` | Who receives the "hold enabled" notice. |
 | `notifications.send_signup_receipt` | `false` | Email each new signup a receipt. |
 | `notifications.auto_announce_on_up` | `false` | Auto-schedule the announcement when a hold ends. |
@@ -421,6 +430,40 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `spam.honeypot_field` | `website` | Hidden honeypot field name. |
 | `models.signup` | `App\Models\HoldSignup` | Resolved HoldSignup model. |
 | `models.namespace` / `models.path` | `App\Models` / `app/Models` | Where setup publishes the model (`HoldSignup.php`). |
+
+### Appearance
+
+Every color/derivation-weight below is resolved through
+`JamesGifford\Hold\Hold::appearance()`, tiered **this template's own PHP
+variable (set directly in the published file, always wins) → the matching
+`pages`/`mail` value → the shared value directly under `appearance` → the
+package's own automatic derivation** (see [Customizing the
+views](#customizing-the-views) / [Customizing the announcement
+emails](#customizing-the-announcement-emails)) — completely unchanged by
+this section, just given a new default ahead of it. Each property lives at
+`appearance.<property>` (applies everywhere), and can be scoped to just one
+template family with `appearance.pages.<property>` or
+`appearance.mail.<property>` — for example `appearance.bg`,
+`appearance.pages.bg`, `appearance.mail.bg`.
+
+| Property | Shared default | Applies to |
+| --- | --- | --- |
+| `bg` | `#f5f6f8` | pages, mail |
+| `accent` | `null` | pages, mail |
+| `text` | `null` | pages, mail |
+| `card` | `null` | pages, mail |
+| `card_blend_weight` | `null` | pages, mail |
+| `input_bg` | `null` | pages only |
+| `input_border` | `null` | pages only |
+| `card_shadow_color` | `null` | pages only |
+| `alert_success_bg` / `alert_success_text` | `null` | pages only |
+| `alert_error_bg` / `alert_error_text` | `null` | pages only |
+| `muted` | `null` | mail only |
+| `muted_blend_weight` | `null` | mail only |
+
+`null` means "no override at this tier" for every property except `bg`,
+which always needs a concrete color to start the rest of the derivation
+from.
 
 ### Publish tags
 
@@ -502,7 +545,7 @@ white label) — there's no broadly-supported CSS function that can do either
 yet:
 
 ```php
-$bg = '#f5f6f8';
+$bg = null;                // set to override the config default; falls back to #f5f6f8
 
 $accent = null;            // set to override the automatic hue-matched derivation
 $text = null;              // set to override the automatic light/dark derivation
@@ -569,6 +612,16 @@ value. `$accent`, `$text`, `$cardBg`, `$inputBg`, `$inputBorder`,
 automatically"); set any one of them to a real hex value instead and that
 value wins outright, no derivation runs for that property — a per-property
 escape hatch, not an all-or-nothing toggle.
+
+**Before any of the above auto-derives, it checks config first.** Every
+property left `null` calls `JamesGifford\Hold\Hold::appearance()`, which
+checks `config('jamesgifford.hold.appearance.*')` before falling back to the
+`ColorTheme` derivation shown above — see [Appearance](#appearance). That's
+the "set once for every template" path: set `appearance.bg` to rebrand the
+holding pages *and* the mail templates from one place, or scope it to just
+one family with `appearance.pages.bg` — leaving `appearance.mail` (and so
+the emails) at whatever it would otherwise be, and vice versa. A value set
+directly in this file, as above, still wins over both.
 
 The color math itself lives in `JamesGifford\Hold\Support\ColorTheme` (WCAG
 relative luminance and contrast ratio — including a shared

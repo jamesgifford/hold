@@ -14,24 +14,30 @@
      * override just that one value. See ColorTheme for the derivation math.
      * Plain PHP variables (NOT CSS custom properties — email clients support
      * those poorly), interpolated straight into the inline styles below.
+     * Auto-derivation itself checks the appearance config section first
+     * (see Hold::appearance()) — set a value once in config to apply
+     * it everywhere, or scope it to just the mail templates or just the
+     * holding pages, without touching this file at all.
      */
     $colorTheme = \JamesGifford\Hold\Support\ColorTheme::class;
+    $hold = \JamesGifford\Hold\Hold::class;
 
-    $bg = '#f5f6f8';
+    $bg = null;
     $accent = null;    // set to override the automatic hue-matched derivation
     $text = null;      // set to override the automatic light/dark derivation
     $card = null;      // set to override the automatic card-background blend
     $muted = null;     // set to override the automatic secondary/footnote-text blend
-    $cardBlendWeight = $colorTheme::CARD_BLEND_WEIGHT;    // 0-1; how strongly $card blends toward $text
-    $mutedBlendWeight = $colorTheme::MUTED_BLEND_WEIGHT;  // 0-1; how strongly $muted blends from $bg toward $text
+    $cardBlendWeight = $hold::appearance('card_blend_weight', 'mail') ?? $colorTheme::CARD_BLEND_WEIGHT;    // 0-1; how strongly $card blends toward $text
+    $mutedBlendWeight = $hold::appearance('muted_blend_weight', 'mail') ?? $colorTheme::MUTED_BLEND_WEIGHT;  // 0-1; how strongly $muted blends from $bg toward $text
 
     // Derive anything left null above from $bg:
-    $accent ??= $colorTheme::accentFor($bg);
-    $text ??= $colorTheme::textFor($bg);
-    $card ??= $colorTheme::cardBackground($bg, $text, $cardBlendWeight);
+    $bg ??= $hold::appearance('bg', 'mail');
+    $accent ??= $hold::appearance('accent', 'mail') ?? $colorTheme::accentFor($bg);
+    $text ??= $hold::appearance('text', 'mail') ?? $colorTheme::textFor($bg);
+    $card ??= $hold::appearance('card', 'mail') ?? $colorTheme::cardBackground($bg, $text, $cardBlendWeight);
 
     // The footnote's real backdrop is $bg, not $card — it sits outside the card.
-    $muted ??= $colorTheme::blend($bg, $text, $mutedBlendWeight);
+    $muted ??= $hold::appearance('muted', 'mail') ?? $colorTheme::blend($bg, $text, $mutedBlendWeight);
 
     /*
      * ── Spacing ──────────────────────────────────────────────────────────────

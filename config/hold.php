@@ -89,6 +89,77 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Appearance
+    |--------------------------------------------------------------------------
+    |
+    | Set any of these once here to apply it across every holding page and
+    | mail template — each is resolved through JamesGifford\Hold\Hold::
+    | appearance(), tiered this template's own $property (set directly in the
+    | published file, always wins) > the matching 'pages'/'mail' value below >
+    | the shared value directly under this key > the package's own automatic
+    | derivation (see JamesGifford\Hold\Support\ColorTheme), which is
+    | completely unchanged by this section — these are new defaults ahead of
+    | it, not a replacement for it.
+    |
+    */
+
+    'appearance' => [
+
+        // Shared: applies to both the holding pages and the mail templates,
+        // unless the more specific 'pages'/'mail' value below is set. null
+        // means "no override" for everything except 'bg', which always
+        // needs a concrete color.
+        'bg' => '#f5f6f8',
+        'accent' => null,
+        'text' => null,
+        'card' => null,
+        'card_blend_weight' => null,
+        'input_bg' => null,
+        'input_border' => null,
+        'card_shadow_color' => null,
+        'alert_success_bg' => null,
+        'alert_success_text' => null,
+        'alert_error_bg' => null,
+        'alert_error_text' => null,
+        'muted' => null,
+        'muted_blend_weight' => null,
+
+        // Scopes the shared values above to prelaunch.blade.php /
+        // maintenance.blade.php only. No muted/muted_blend_weight — those
+        // are mail-only, the pages have no equivalent.
+        'pages' => [
+            'bg' => null,
+            'accent' => null,
+            'text' => null,
+            'card' => null,
+            'card_blend_weight' => null,
+            'input_bg' => null,
+            'input_border' => null,
+            'card_shadow_color' => null,
+            'alert_success_bg' => null,
+            'alert_success_text' => null,
+            'alert_error_bg' => null,
+            'alert_error_text' => null,
+        ],
+
+        // Scopes the shared values above to announcement.blade.php /
+        // team.blade.php / receipt.blade.php only. No input_bg/
+        // input_border/card_shadow_color/alert_* — page-only, no form or
+        // alert UI in a one-way notification email.
+        'mail' => [
+            'bg' => null,
+            'accent' => null,
+            'text' => null,
+            'card' => null,
+            'card_blend_weight' => null,
+            'muted' => null,
+            'muted_blend_weight' => null,
+        ],
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Notifications
     |--------------------------------------------------------------------------
     |
