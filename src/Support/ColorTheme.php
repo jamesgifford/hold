@@ -294,13 +294,9 @@ final class ColorTheme
      */
     public static function toRgb(string $hex): array
     {
-        $normalized = ltrim(trim($hex), '#');
+        $normalized = self::normalizeHex($hex);
 
-        if (strlen($normalized) === 3) {
-            $normalized = $normalized[0].$normalized[0].$normalized[1].$normalized[1].$normalized[2].$normalized[2];
-        }
-
-        if (preg_match('/^[0-9a-fA-F]{6}$/', $normalized) !== 1) {
+        if ($normalized === null) {
             throw new InvalidArgumentException("Not a valid hex color: [{$hex}].");
         }
 
@@ -309,6 +305,17 @@ final class ColorTheme
             (int) hexdec(substr($normalized, 2, 2)),
             (int) hexdec(substr($normalized, 4, 2)),
         ];
+    }
+
+    /**
+     * Whether a value is a well-formed `#rgb`/`#rrggbb` (or bare, no-`#`)
+     * hex color — the same acceptance rule toRgb() enforces, exposed so a
+     * caller (Hold::appearance()) can validate an arbitrary config value
+     * before it ever reaches toRgb() and throws.
+     */
+    public static function isValidHex(string $value): bool
+    {
+        return self::normalizeHex($value) !== null;
     }
 
     /**
@@ -380,6 +387,21 @@ final class ColorTheme
         }
 
         return sprintf('#%02x%02x%02x', (int) round($r * 255), (int) round($g * 255), (int) round($b * 255));
+    }
+
+    /**
+     * Expand a `#rgb`/`#rrggbb` (or bare) hex color to a bare 6-digit form,
+     * or null when it is not a well-formed hex color.
+     */
+    private static function normalizeHex(string $hex): ?string
+    {
+        $normalized = ltrim(trim($hex), '#');
+
+        if (strlen($normalized) === 3) {
+            $normalized = $normalized[0].$normalized[0].$normalized[1].$normalized[1].$normalized[2].$normalized[2];
+        }
+
+        return preg_match('/^[0-9a-fA-F]{6}$/', $normalized) === 1 ? $normalized : null;
     }
 
     /** WCAG linearization of a single 0-255 sRGB channel. */

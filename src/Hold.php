@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 use JamesGifford\Hold\Contracts\HoldSignupContract;
 use JamesGifford\Hold\Models\HoldSignup;
+use JamesGifford\Hold\Support\ColorTheme;
 use RuntimeException;
 
 /**
@@ -111,6 +112,13 @@ final class Hold
      * every property except 'bg') — never returns "missing," so a caller can
      * `??=` straight onto its own auto-derivation without a third fallback.
      *
+     * A malformed value at the group or shared tier (not a well-formed hex
+     * color, or not numeric for a `*_weight` key) is treated as absent at
+     * that tier rather than returned verbatim — an unvalidated value would
+     * otherwise reach ColorTheme and throw mid-render, turning a config
+     * typo (e.g. an unset env var resolving to '') into a hard error on
+     * every holding-page visit and mail render for the duration of a hold.
+     *
      * Falls back to the RAW shipped config (packageDefaults()), same as
      * notificationClass() and for the same reason (see its docblock):
      * ServiceProvider::mergeConfigFrom() merges only the top-level
@@ -121,8 +129,8 @@ final class Hold
      */
     public static function appearance(string $key, string $group): mixed
     {
-        $value = config("jamesgifford.hold.appearance.{$group}.{$key}")
-            ?? config("jamesgifford.hold.appearance.{$key}");
+        $value = self::validAppearanceValue($key, config("jamesgifford.hold.appearance.{$group}.{$key}"))
+            ?? self::validAppearanceValue($key, config("jamesgifford.hold.appearance.{$key}"));
 
         if ($value !== null) {
             return $value;
@@ -131,6 +139,25 @@ final class Hold
         $defaults = self::packageDefaults()['appearance'];
 
         return $defaults[$group][$key] ?? $defaults[$key] ?? null;
+    }
+
+    /**
+     * Validate a raw config value for an appearance property against its
+     * type — a hex color, or a numeric 0-1 blend weight for a `*_weight`
+     * key — returning it only when well-formed; null (the "no override at
+     * this tier" sentinel appearance() already treats null as) otherwise.
+     */
+    private static function validAppearanceValue(string $key, mixed $raw): null|string|float
+    {
+        if ($raw === null) {
+            return null;
+        }
+
+        if (str_ends_with($key, '_weight')) {
+            return is_int($raw) || is_float($raw) ? (float) $raw : null;
+        }
+
+        return is_string($raw) && ColorTheme::isValidHex($raw) ? $raw : null;
     }
 
     /**

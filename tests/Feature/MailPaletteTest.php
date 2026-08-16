@@ -6,8 +6,9 @@ use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Support\ColorTheme;
 
 /*
- * "Set $bg alone, the rest adapts." publishEditedMail()/renderMailBody() are
- * shared with EmailCopyTest.php.
+ * "Set $bg alone, the rest adapts." publishEditedMail() lives in
+ * tests/Pest.php, shared with EmailCopyTest.php; renderMailBody() is shared
+ * with EmailCopyTest.php directly.
  */
 
 /**
@@ -93,7 +94,7 @@ it('lets an explicit $muted override bypass the derivation', function () {
 it('lets $cardBlendWeight tune how strongly $card blends toward $text', function () {
     foreach (['announcement', 'team', 'receipt'] as $template) {
         publishEditedMail($template, [
-            "\$cardBlendWeight = \$hold::appearance('card_blend_weight', 'mail') ?? \$colorTheme::CARD_BLEND_WEIGHT;    // 0-1; how strongly \$card blends toward \$text" => '$cardBlendWeight = 0.5;    // 0-1; how strongly $card blends toward $text',
+            "\$cardBlendWeight = \$hold::appearance('card_blend_weight', 'mail') ?? \$colorTheme::CARD_BLEND_WEIGHT;" => '$cardBlendWeight = 0.5;',
         ]);
 
         $expected = ColorTheme::cardBackground('#f5f6f8', '#1a1d24', 0.5);
@@ -106,7 +107,7 @@ it('lets $cardBlendWeight tune how strongly $card blends toward $text', function
 it('lets $mutedBlendWeight tune how strongly $muted blends from $bg toward $text', function () {
     foreach (['announcement', 'team', 'receipt'] as $template) {
         publishEditedMail($template, [
-            "\$mutedBlendWeight = \$hold::appearance('muted_blend_weight', 'mail') ?? \$colorTheme::MUTED_BLEND_WEIGHT;  // 0-1; how strongly \$muted blends from \$bg toward \$text" => '$mutedBlendWeight = 0.5;  // 0-1; how strongly $muted blends from $bg toward $text',
+            "\$mutedBlendWeight = \$hold::appearance('muted_blend_weight', 'mail') ?? \$colorTheme::MUTED_BLEND_WEIGHT;" => '$mutedBlendWeight = 0.5;',
         ]);
 
         $expected = ColorTheme::blend('#f5f6f8', '#1a1d24', 0.5);

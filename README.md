@@ -465,6 +465,16 @@ template family with `appearance.pages.<property>` or
 which always needs a concrete color to start the rest of the derivation
 from.
 
+> **Existing installs:** this config tier only wins where the published
+> template leaves its own PHP variable at `null`. A template published
+> before this section existed set `$bg` (and friends) to a literal default
+> (e.g. `$bg = '#f5f6f8';`), not `null` — tier 1 (the template's own
+> variable) always wins, so `appearance.*` config is silently ignored for
+> that published copy. Re-publish the affected template (delete your copy
+> and re-run setup, or `vendor:publish --tag=jamesgifford-hold-views
+> --force`) to pick up config-driven appearance, or hand-edit the variable
+> to `null` yourself.
+
 ### Publish tags
 
 `jamesgifford:hold:setup` publishes everything for you; these tags exist for

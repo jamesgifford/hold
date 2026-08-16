@@ -5,6 +5,56 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-08-16
+
+### Fixed
+
+- **Malformed `appearance.*` config crashed every holding-page render and
+  mail send.** `Hold::appearance()` returned a config value verbatim as long
+  as it was non-null, so an empty string (e.g. an unset `env()` var), a CSS
+  color name, or a wrong-typed value reached `ColorTheme` and threw — an
+  uncaught `InvalidArgumentException` on every prelaunch/maintenance page
+  view and every announcement/receipt send for as long as the hold was up.
+  `appearance()` now validates each value against its property type (a
+  well-formed hex color, or a numeric 0-1 weight for a `*_weight` key)
+  before accepting it, and falls through to the next config tier — then the
+  package's own derivation — exactly as it already does for a genuinely
+  absent value.
+
+### Documentation
+
+- **The "rebrand without touching these files" claim didn't hold for
+  templates published before 1.3.0.** Those copies set `$bg` (and its
+  siblings) to a literal default rather than `null`, so the template's own
+  variable — which always wins — silently ignored the new `appearance.*`
+  config tier. The [Appearance](#appearance) section now says so and points
+  at re-publishing.
+- **`resources/boost/skills/jamesgifford-hold/SKILL.md` miscounted the
+  holding pages' palette variables** as "eleven color/weight variables …
+  default to null." Eleven *color* variables do; the twelfth,
+  `$cardBlendWeight`, is weight-only and does not default to null. Corrected.
+- Fixed the `[1.3.0]` compare link below, which pointed at `HEAD` instead of
+  the tagged release.
+
+### Testing & tooling
+
+*No runtime effect.*
+
+- `publishEditedPage()` / `publishEditedMail()` (used by the palette/copy
+  tests) moved from `PageCopyTest.php` / `EmailCopyTest.php` into
+  `tests/Pest.php`, so a test file that needs them — `AppearanceConfigTest.php`
+  in particular — no longer errors with `Call to undefined function` when
+  Pest is filtered to run it alone.
+- Added direct `Hold::appearance()` coverage for `card_blend_weight` /
+  `muted_blend_weight`, plus a template-integration test that drives each
+  through the shipped `prelaunch.blade.php` / `mail/receipt.blade.php` lines
+  from config rather than only via a literal override — previously nothing
+  exercised the config path for either weight end to end.
+- The two mail palette tests for `$cardBlendWeight`/`$mutedBlendWeight` now
+  match only the executable prefix of their target line, not its trailing
+  comment verbatim — matching `PagePaletteTest.php`'s existing convention and
+  cutting a needless source of test churn on comment-only edits.
+
 ## [1.3.0] - 2026-08-15
 
 ### Added
@@ -361,7 +411,8 @@ launch/restore announcement notifications.
 - Documented config covering routes, prelaunch, notifications (including announcement subjects), mail from-address override, spam protection, and model resolution / publish location.
 - A shipped Laravel Boost skill documenting the package's modes, commands, and customization surface.
 
-[1.3.0]: https://github.com/jamesgifford/hold/compare/v1.2.1...HEAD
+[1.3.1]: https://github.com/jamesgifford/hold/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/jamesgifford/hold/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jamesgifford/hold/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jamesgifford/hold/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/jamesgifford/hold/compare/v1.0.0...v1.1.0

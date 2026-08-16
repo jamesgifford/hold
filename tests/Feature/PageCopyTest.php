@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\View;
-
 /*
  * The holding pages' wording now lives in each file's top-of-file $copy block,
  * including the two form-state messages. These tests render the real templates
@@ -20,26 +17,8 @@ function renderPage(string $view, ?string $status): string
     return holdRender($view);
 }
 
-/** Publish an edited copy of a package page template as the winning override. */
-/**
- * @param  array<string, string>  $edits
- */
-function publishEditedPage(string $view, array $edits): void
-{
-    $source = File::get(dirname(__DIR__, 2)."/resources/views/{$view}.blade.php");
-
-    foreach ($edits as $search => $replace) {
-        expect($source)->toContain($search);
-        $source = str_replace($search, $replace, $source);
-    }
-
-    $dir = sys_get_temp_dir().'/hold-pagecopy-'.uniqid();
-    File::ensureDirectoryExists($dir);
-    File::put($dir."/{$view}.blade.php", $source);
-
-    View::prependNamespace('hold', $dir);
-    View::flushFinderCache();
-}
+// publishEditedPage() lives in tests/Pest.php — shared with PagePaletteTest.php
+// and AppearanceConfigTest.php.
 
 // --- fresh install: default wording (prelaunch) ----------------------------
 

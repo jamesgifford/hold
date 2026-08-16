@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Notifications\AnonymousNotifiable;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\View;
 use JamesGifford\Hold\HoldSignupContext;
 use JamesGifford\Hold\Models\HoldSignup;
 use JamesGifford\Hold\Notifications\HoldSignupReceipt;
@@ -26,26 +24,7 @@ function renderMailBody(object $notification): string
     return holdRender($mail->view, $mail->viewData);
 }
 
-/** Publish an edited copy of a package mail template as the winning override. */
-/**
- * @param  array<string, string>  $edits
- */
-function publishEditedMail(string $template, array $edits): void
-{
-    $source = File::get(dirname(__DIR__, 2)."/resources/views/mail/{$template}.blade.php");
-
-    foreach ($edits as $search => $replace) {
-        expect($source)->toContain($search);
-        $source = str_replace($search, $replace, $source);
-    }
-
-    $dir = sys_get_temp_dir().'/hold-emailcopy-'.uniqid();
-    File::ensureDirectoryExists($dir.'/mail');
-    File::put($dir."/mail/{$template}.blade.php", $source);
-
-    View::prependNamespace('hold', $dir);
-    View::flushFinderCache();
-}
+// publishEditedMail() lives in tests/Pest.php — shared with MailPaletteTest.php.
 
 // --- fresh install: default wording ----------------------------------------
 

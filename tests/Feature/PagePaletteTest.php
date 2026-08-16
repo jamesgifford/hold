@@ -5,8 +5,8 @@ declare(strict_types=1);
 use JamesGifford\Hold\Support\ColorTheme;
 
 /*
- * "Set $bg alone, the rest adapts." publishEditedPage() is shared with
- * PageCopyTest.php.
+ * "Set $bg alone, the rest adapts." publishEditedPage() lives in
+ * tests/Pest.php, shared with PageCopyTest.php and AppearanceConfigTest.php.
  */
 
 it('keeps the default light background paired with the default dark text and default accent', function () {

@@ -14,6 +14,16 @@ it('rejects an invalid hex color', function () {
     ColorTheme::toRgb('not-a-color');
 })->throws(InvalidArgumentException::class);
 
+it('validates well-formed hex colors and rejects malformed ones', function () {
+    expect(ColorTheme::isValidHex('#f5f6f8'))->toBeTrue();
+    expect(ColorTheme::isValidHex('f5f6f8'))->toBeTrue();
+    expect(ColorTheme::isValidHex('#fff'))->toBeTrue();
+
+    expect(ColorTheme::isValidHex(''))->toBeFalse();
+    expect(ColorTheme::isValidHex('white'))->toBeFalse();
+    expect(ColorTheme::isValidHex('#gggggg'))->toBeFalse();
+});
+
 it('computes canonical WCAG relative luminance for black and white', function () {
     expect(ColorTheme::relativeLuminance('#000000'))->toBe(0.0);
     expect(ColorTheme::relativeLuminance('#ffffff'))->toBe(1.0);
