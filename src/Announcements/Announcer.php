@@ -54,6 +54,13 @@ final class Announcer
             'requested_at' => Carbon::now(),
         ]);
 
+        // Never saved, so it has no real key — but the mail's unsubscribe
+        // link is minted from getKey(), and a null one silently drops the
+        // 'signup' query parameter instead of producing a signed link that
+        // just 404s on click. A placeholder key keeps the rehearsal honest
+        // about what a real send's link looks like.
+        $signup->setAttribute($signup->getKeyName(), 0);
+
         Notification::route('mail', $email)->notify(new $class($signup));
     }
 

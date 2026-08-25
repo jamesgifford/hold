@@ -120,6 +120,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   returns) was silently discarded** — `card_blend_weight`/`muted_blend_weight`
   only accepted a native `int`/`float`, so `env('HOLD_CARD_BLEND_WEIGHT', 0.12)`
   read from `.env` fell through to the package default with no warning.
+- **`--test=<address>` minted an unsubscribe link with no signup id at all**
+  — the rehearsal signup is deliberately never saved (see Added above), so
+  its primary key was `null`; the mailed link silently dropped the `signup=`
+  query parameter instead of carrying a placeholder id. It now carries one.
 
 ### Changed
 

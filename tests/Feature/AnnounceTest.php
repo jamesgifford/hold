@@ -190,6 +190,27 @@ it('sends a rendered test announcement to an arbitrary address, touching no rows
     expect(app(Announcer::class)->pending(HoldSignupContext::Prelaunch))->toBe(2);
 });
 
+it('gives the rehearsal a well-formed unsubscribe link instead of a dropped signup= parameter', function () {
+    // The rehearsal signup is never saved, so it has no real primary key —
+    // the link must still carry SOME identifier rather than silently losing
+    // the query parameter entirely (which 404s on click with no signup id
+    // at all, unlike a real link to an unknown id).
+    Notification::fake();
+    HoldSignup::factory()->prelaunch()->create();
+
+    $this->artisan('jamesgifford:hold:announce', ['--context' => 'prelaunch', '--test' => 'rehearsal@example.com'])
+        ->assertSuccessful();
+
+    Notification::assertSentOnDemand(
+        LaunchAnnouncement::class,
+        function (LaunchAnnouncement $notification, array $channels, $notifiable) {
+            $url = $notification->toMail($notifiable)->viewData['unsubscribeUrl'];
+
+            return str_contains($url, 'signup=0');
+        },
+    );
+});
+
 it('works for a --test send when zero signups are pending, given an explicit --context', function () {
     Notification::fake();
 
