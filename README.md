@@ -617,13 +617,22 @@ an app-owned class it has no static relationship with; a configured class
 that exists but does not implement the contract raises a clear exception
 rather than silently falling back to the package's own model.
 
-> **Existing installs:** `markVerified()` and the `verified_at` property were
-> added to the contract in 1.4.0. A custom `models.signup` class published
-> before then needs both added (`verified_at` also needs the `datetime` cast
-> and a migrated column — see [Setup](#setup)) — re-publish the model
-> (`php artisan jamesgifford:hold:setup`, accept the overwrite) or hand-add
-> them. The boot-time exception above already gives a clear message if you
-> forget.
+The contract does **not** cover the local scopes the package chains onto the
+resolved model's query builder (`verified()`, `subscribed()`, `notNotified()`,
+`context()`) — a scope isn't a regular interface method Eloquent's `#[Scope]`
+attribute mechanism, so nothing type-checks it at boot the way it does the
+three methods above. A custom `models.signup` class needs all four copied
+from `HoldSignup`, or the first query that chains a missing one (e.g.
+`jamesgifford:hold:announce`, even `--dry-run`) throws.
+
+> **Existing installs:** `markVerified()`, the `verified_at` property, and the
+> `verified()` scope were added in 1.4.0. A custom `models.signup` class
+> published before then needs all three added (`verified_at` also needs the
+> `datetime` cast and a migrated column — see [Setup](#setup)) — re-publish
+> the model (`php artisan jamesgifford:hold:setup`, accept the overwrite) or
+> hand-add them. The boot-time exception above only covers `markVerified()`;
+> a missing `verified()` scope throws later, from `Announcer`, the first time
+> it's called.
 
 ## Customizing the views
 

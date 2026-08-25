@@ -218,6 +218,10 @@ Published to `config/jamesgifford/hold.php`:
 - Do NOT point `models.signup` at a class that does not implement
   `HoldSignupContract` (including `markVerified()`, added in 1.4.0) —
   resolution throws rather than falling back silently.
+- Do NOT forget the `verified()` local scope on a custom `models.signup`
+  class (also added in 1.4.0) — it is not part of the contract, so nothing
+  catches a missing one at boot; `Announcer` throws the first time it chains
+  it, even on `--dry-run`.
 - Do NOT expect the announcer to email an unverified signup, whatever
   `verification.required` is currently set to — the stamp-on-create rule
   means only genuinely-pending rows are ever excluded.

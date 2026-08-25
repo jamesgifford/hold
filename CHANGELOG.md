@@ -15,10 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 >
 > 1. **`HoldSignupContract` gains `markVerified(): void` and
 >    `@property Carbon|null $verified_at`.** A custom `models.signup` class
->    published before this release needs both added. Re-publish the model
->    (`php artisan jamesgifford:hold:setup`, accept the overwrite) or hand-add
->    them; a class that exists but does not implement the contract raises a
->    clear exception at boot rather than resolving to the wrong model.
+>    published before this release needs both added, **and needs its own
+>    `verified()` local scope** (`Announcer::targets()` now chains it) —
+>    copy it from `HoldSignup::verified()`; it is not part of the contract
+>    (scopes never are — see The signup model contract in the README) so
+>    nothing enforces it at boot the way the two additions above are. Re-publish
+>    the model (`php artisan jamesgifford:hold:setup`, accept the overwrite) or
+>    hand-add all three; a class that exists but does not implement the
+>    contract raises a clear exception at boot rather than resolving to the
+>    wrong model — a missing scope instead throws the first time `announce`
+>    (even `--dry-run`) runs.
 > 2. **Email verification is required by default.** A fresh signup no longer
 >    gets announced to until it clicks a link in the new `SignupVerification`
 >    email — `verification.required` defaults to `true`. Existing rows are
