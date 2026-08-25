@@ -5,6 +5,16 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Testing & tooling
+
+*No runtime effect.*
+
+- Bumped `orchestra/testbench` (`^11.0` → `^11.2`) and `pestphp/pest`
+  (`^5.0` → `^5.1`) — both `require-dev`, so nothing a consuming app
+  installs changes. Routine Dependabot updates (#4, #5).
+
 ## [1.4.0] - 2026-08-25
 
 > ### Upgrading from 1.3.x — read this first
