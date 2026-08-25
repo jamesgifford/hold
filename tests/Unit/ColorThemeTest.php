@@ -24,6 +24,13 @@ it('validates well-formed hex colors and rejects malformed ones', function () {
     expect(ColorTheme::isValidHex('#gggggg'))->toBeFalse();
 });
 
+it('normalizes any well-formed hex to a #-prefixed 6-digit form, or null when malformed', function () {
+    expect(ColorTheme::normalize('f5f6f8'))->toBe('#f5f6f8');
+    expect(ColorTheme::normalize('#f5f6f8'))->toBe('#f5f6f8');
+    expect(ColorTheme::normalize('fff'))->toBe('#ffffff');
+    expect(ColorTheme::normalize('not-a-color'))->toBeNull();
+});
+
 it('computes canonical WCAG relative luminance for black and white', function () {
     expect(ColorTheme::relativeLuminance('#000000'))->toBe(0.0);
     expect(ColorTheme::relativeLuminance('#ffffff'))->toBe(1.0);

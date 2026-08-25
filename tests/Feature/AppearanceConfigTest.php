@@ -67,6 +67,13 @@ it('treats a malformed color override as no override, falling through to the nex
     expect(Hold::appearance('bg', 'pages'))->toBe('#f5f6f8');
 });
 
+it('normalizes a bare hex color with no leading # to valid CSS', function () {
+    config()->set('jamesgifford.hold.appearance.bg', 'f5f6f8');
+
+    expect(Hold::appearance('bg', 'pages'))->toBe('#f5f6f8');
+    expect(holdRender('hold::prelaunch'))->toContain('--hold-bg: #f5f6f8;');
+});
+
 it('lets a valid shared color win when the more specific group tier is malformed', function () {
     config()->set('jamesgifford.hold.appearance.bg', '#4ba69d');
     config()->set('jamesgifford.hold.appearance.pages.bg', 'not-a-color');
@@ -80,6 +87,12 @@ it('treats a malformed blend-weight override as no override', function () {
 
     config()->set('jamesgifford.hold.appearance.card_blend_weight', ['0.5']);
     expect(Hold::appearance('card_blend_weight', 'pages'))->toBeNull();
+});
+
+it('accepts a numeric-string blend weight, as env() would return', function () {
+    config()->set('jamesgifford.hold.appearance.card_blend_weight', '0.5');
+
+    expect(Hold::appearance('card_blend_weight', 'pages'))->toBe(0.5);
 });
 
 // --- Template integration ------------------------------------------------

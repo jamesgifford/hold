@@ -111,6 +111,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `unsubscribed_at`, so the one config value meant to skip verification for a
   plain new signup also, wrongly, skipped the recovery email an opted-out
   re-signup depends on. It now checks the opt-out first.
+- **A configured appearance color with no leading `#` (e.g. `f5f6f8`) was
+  accepted as valid but emitted unnormalized, producing invalid CSS** (e.g.
+  `--hold-bg: f5f6f8;`, silently dropped by the browser). `Hold::appearance()`
+  now canonicalizes every valid hex to `#rrggbb` via the new
+  `ColorTheme::normalize()`.
+- **A `*_weight` appearance value given as a numeric string (what `env()`
+  returns) was silently discarded** — `card_blend_weight`/`muted_blend_weight`
+  only accepted a native `int`/`float`, so `env('HOLD_CARD_BLEND_WEIGHT', 0.12)`
+  read from `.env` fell through to the package default with no warning.
 
 ### Changed
 

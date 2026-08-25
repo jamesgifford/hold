@@ -145,7 +145,10 @@ final class Hold
      * Validate a raw config value for an appearance property against its
      * type — a hex color, or a numeric 0-1 blend weight for a `*_weight`
      * key — returning it only when well-formed; null (the "no override at
-     * this tier" sentinel appearance() already treats null as) otherwise.
+     * this tier" sentinel appearance() already treats null as) otherwise. A
+     * hex color is canonicalized to `#rrggbb` (a bare, no-`#` value is
+     * accepted but not valid CSS as-is); a weight accepts a numeric string
+     * (env() returns one) as well as a native int/float.
      */
     private static function validAppearanceValue(string $key, mixed $raw): null|string|float
     {
@@ -154,10 +157,10 @@ final class Hold
         }
 
         if (str_ends_with($key, '_weight')) {
-            return is_int($raw) || is_float($raw) ? (float) $raw : null;
+            return is_numeric($raw) ? (float) $raw : null;
         }
 
-        return is_string($raw) && ColorTheme::isValidHex($raw) ? $raw : null;
+        return is_string($raw) ? ColorTheme::normalize($raw) : null;
     }
 
     /**

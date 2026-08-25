@@ -319,6 +319,19 @@ final class ColorTheme
     }
 
     /**
+     * Canonicalize a well-formed hex color to `#rrggbb`, or null when
+     * malformed. Unlike normalizeHex(), this is public: it is what a caller
+     * accepting a bare (no-`#`) value from config must return instead of the
+     * raw input, since a bare hex is not valid CSS on its own.
+     */
+    public static function normalize(string $value): ?string
+    {
+        $normalized = self::normalizeHex($value);
+
+        return $normalized === null ? null : '#'.$normalized;
+    }
+
+    /**
      * Convert a hex color to HSL: hue in degrees [0, 360), saturation and
      * lightness each 0-1. The standard textbook conversion — needed by
      * accentFor() to isolate $bg's hue independently of its saturation and
