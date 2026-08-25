@@ -22,13 +22,16 @@ final class SendSignupVerification
 {
     public function handle(HoldSignupCaptured $event): void
     {
-        if (! config('jamesgifford.hold.verification.required', true)) {
-            return;
-        }
-
         $signup = $event->signup;
 
         if ($signup->verified_at !== null && $signup->unsubscribed_at === null) {
+            return;
+        }
+
+        // Verification being off only excuses a still-subscribed row: an
+        // opted-out one still needs the link, since it is the only path back
+        // in regardless of this setting.
+        if ($signup->unsubscribed_at === null && ! config('jamesgifford.hold.verification.required', true)) {
             return;
         }
 

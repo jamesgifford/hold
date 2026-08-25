@@ -352,6 +352,20 @@ it('sends verification to an opted-out address that re-signs up, so verifying ca
     Notification::assertSentOnDemand(SignupVerification::class);
 });
 
+it('still sends verification to an opted-out address that re-signs up when verification is off, so it is not stranded', function () {
+    // With verification off, capture() never re-clears unsubscribed_at (only
+    // a verify click does), so this email is the only way back in — the
+    // config that skips verification for a merely-new row must not also
+    // skip it here.
+    Notification::fake();
+    config()->set('jamesgifford.hold.verification.required', false);
+    HoldSignup::factory()->notified()->unsubscribed()->create(['email' => 'optout-resignup-off@example.com']);
+
+    $this->post('hold/signup', ['email' => 'optout-resignup-off@example.com', 'context' => 'prelaunch']);
+
+    Notification::assertSentOnDemand(SignupVerification::class);
+});
+
 // --- Unsubscribe headers -----------------------------------------------
 
 it('carries List-Unsubscribe headers on the two announcements and the receipt', function () {
