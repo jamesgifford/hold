@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A prelaunch flag file left over from local browsing could silently
+  intercept a consuming app's own test suite** — `storage_path()` resolves to
+  the same physical directory regardless of `APP_ENV`, and `PrelaunchMode`
+  had no awareness of environment, so a forgotten
+  `jamesgifford:hold:enable prelaunch` would render the holding page for
+  every HTTP request in a later `php artisan test` run too, with nothing in
+  the resulting failures pointing back at Hold. `PrelaunchMode` now no-ops by
+  default while `APP_ENV` is `testing` (logging a warning instead of
+  intercepting); the new `prelaunch.enforce_in_testing` config option opts
+  back into real enforcement for apps that deliberately test the holding
+  page. `jamesgifford:hold:enable prelaunch` also now prints a reminder that
+  the flag file persists across every environment sharing that storage path.
+
 ### Testing & tooling
 
 *No runtime effect.*

@@ -64,6 +64,16 @@ return [
 
         // How long the bypass cookie lasts, in days.
         'bypass_cookie_lifetime_days' => 30,
+
+        // Whether an active prelaunch hold is actually enforced while
+        // APP_ENV is `testing`. Defaults to false: the flag file lives under
+        // storage_path(), which resolves to the same physical directory
+        // regardless of environment, so a hold left on from local browsing
+        // would otherwise silently intercept every request your own test
+        // suite makes. PrelaunchMode no-ops in that case instead (logging a
+        // warning). Set this to true if you deliberately want a test to see
+        // the holding page.
+        'enforce_in_testing' => false,
     ],
 
     /*

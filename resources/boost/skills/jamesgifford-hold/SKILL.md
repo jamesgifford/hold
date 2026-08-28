@@ -25,7 +25,11 @@ active; run `disable` first.
 active, except the package's own routes and holders of a valid bypass cookie.
 Toggle it with the commands, never by writing the flag file yourself. The
 response status is `config('jamesgifford.hold.prelaunch.status_code')` (200 to
-stay indexable, or 503).
+stay indexable, or 503). Because `storage_path()` is the same physical
+directory regardless of `APP_ENV`, a flag file left over from local browsing
+would otherwise silently intercept a consuming app's own test suite —
+`PrelaunchMode` no-ops (and logs a warning) while `app()->environment('testing')`
+unless `config('jamesgifford.hold.prelaunch.enforce_in_testing')` is `true`.
 
 **Maintenance** — Laravel's native `php artisan down`, untouched. The package
 keeps its own routes reachable while down (a container-bound subclass of
@@ -122,6 +126,9 @@ Published to `config/jamesgifford/hold.php`:
 - `routes.register` / `routes.prefix` / `routes.middleware` — set `register` false
   to own routing (publish the routes stub); keep `prefix` in sync everywhere.
 - `prelaunch.status_code` (200/503), `prelaunch.bypass_cookie_name` / `..._lifetime_days`.
+- `prelaunch.enforce_in_testing` (default `false`) — whether an active prelaunch
+  hold is actually enforced while `APP_ENV` is `testing`; `false` means a
+  leftover flag file no-ops instead of intercepting your own test suite.
 - `maintenance.retry_after` (default 3600) — seconds sent as the `Retry-After`
   header when maintenance is enabled through Hold; `--retry` on `enable` overrides
   it; `0`/`null` omits the header. A bare `artisan down` needs `--retry` manually.

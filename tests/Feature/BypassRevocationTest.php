@@ -10,6 +10,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
     Route::middleware('web')->get('/', fn () => 'REAL APP HOMEPAGE');
+
+    // These cases assert real interception of a non-package route, which the
+    // shipped default no-ops during `testing` (see PrelaunchModeTest) — opt
+    // back in, same as PrelaunchModeTest does for the same reason.
+    config()->set('jamesgifford.hold.prelaunch.enforce_in_testing', true);
 });
 
 afterEach(function () {

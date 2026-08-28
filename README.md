@@ -150,6 +150,16 @@ the link printed by the most recent `enable`.
 > `enable`/`disable` through a single node, or point `storage/jamesgifford/hold/`
 > at shared storage, if you run more than one app server.
 
+> ⚠️ **Don't let a forgotten flag file eat your test suite.** `storage_path()`
+> resolves to the same physical directory no matter what `APP_ENV` is — so if
+> you run `enable prelaunch` locally to preview something and forget to
+> `disable` it, the flag file is still sitting there the next time you run
+> `php artisan test`. Because of that, `PrelaunchMode` no-ops by default while
+> `APP_ENV` is `testing` (logging a warning instead of intercepting), so a
+> stray hold can't silently turn every unrelated feature test into a
+> "Coming soon" page. Set `prelaunch.enforce_in_testing` to `true` if you
+> deliberately want a test to see the holding page.
+
 ### Maintenance
 
 `enable maintenance` runs Laravel's native `php artisan down` for you (with a
@@ -513,6 +523,7 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `prelaunch.status_code` | `200` | HTTP status for the prelaunch page (`200` or `503`). |
 | `prelaunch.bypass_cookie_name` | `hold_bypass` | Name of the preview bypass cookie. |
 | `prelaunch.bypass_cookie_lifetime_days` | `30` | Bypass cookie lifetime. |
+| `prelaunch.enforce_in_testing` | `false` | Whether an active prelaunch hold is actually enforced while `APP_ENV` is `testing`. `false` means a leftover flag file no-ops (with a logged warning) instead of intercepting your own test suite. |
 | `maintenance.retry_after` | `3600` | Seconds sent as the `Retry-After` header when maintenance is enabled via `enable maintenance` (`--retry` overrides; `0`/`null` omits it). Only applies to holds enabled through Hold — a bare `artisan down` needs `--retry` passed manually. |
 | `appearance.*` | see [Appearance](#appearance) | Set colors once for every template, or scope them to just the holding pages or just the mail templates. |
 | `notifications.team_addresses` | `[]` | Who receives the "hold enabled" notice. |

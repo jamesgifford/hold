@@ -76,8 +76,24 @@ final class EnableCommand extends Command
         }
 
         $this->printPreviewLink($state);
+        $this->printStoragePathReminder();
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The flag file lives under storage_path(), which resolves to the same
+     * physical directory no matter what APP_ENV is set to. Forgetting to
+     * disable it does not just affect the next browser visit — it can also
+     * bleed into a later `php artisan test` run sharing that same path.
+     */
+    private function printStoragePathReminder(): void
+    {
+        $this->newLine();
+        $this->comment('Remember to run `jamesgifford:hold:disable` when you\'re done previewing: the flag');
+        $this->comment('file lives under storage/, which every process sharing this app resolves the same');
+        $this->comment('way regardless of environment. `php artisan test` ignores it by default (see');
+        $this->comment('`prelaunch.enforce_in_testing`), but a leftover flag file is still worth clearing.');
     }
 
     private function enableMaintenance(): int

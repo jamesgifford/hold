@@ -15,6 +15,7 @@ it('enables prelaunch mode, prints a signed preview link, and reports status', f
         ->assertSuccessful()
         ->expectsOutputToContain('Prelaunch')
         ->expectsOutputToContain('/hold/preview')
+        ->expectsOutputToContain('jamesgifford:hold:disable')
         ->expectsOutputToContain('Active hold: prelaunch');
 
     expect(app(HoldState::class)->isActive())->toBeTrue();
