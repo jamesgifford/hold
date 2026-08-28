@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Events\MaintenanceModeEnabled;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use JamesGifford\Hold\HoldSignupContext;
@@ -180,6 +181,21 @@ it('auto-disables prelaunch when maintenance is enabled natively', function () {
 
     expect(app(HoldState::class)->isActive())->toBeFalse()
         ->and($this->app->isDownForMaintenance())->toBeTrue();
+});
+
+it('cannot self-heal an env-forced prelaunch hold, so it logs a warning that both are now active', function () {
+    config()->set('jamesgifford.hold.prelaunch.forced', true);
+
+    Log::shouldReceive('warning')
+        ->once()
+        ->withArgs(fn (string $message) => str_contains($message, 'HOLD_PRELAUNCH') && str_contains($message, 'maintenance'));
+    Log::shouldReceive('info')->never();
+
+    $this->artisan('down')->assertSuccessful();
+
+    expect($this->app->isDownForMaintenance())->toBeTrue()
+        ->and(app(HoldState::class)->isActive())->toBeTrue()
+        ->and(app(HoldState::class)->source())->toBe('env');
 });
 
 // --- 503 shim during real maintenance --------------------------------------

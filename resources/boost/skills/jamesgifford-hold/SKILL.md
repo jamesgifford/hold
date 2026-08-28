@@ -19,27 +19,46 @@ time**. Drive both with `jamesgifford:hold:enable {prelaunch|maintenance}` and
 `jamesgifford:hold:disable` (see Commands). `enable` refuses if a hold is already
 active; run `disable` first.
 
-**Prelaunch ("coming soon")** — package-owned, toggled by a flag file under
-`storage/jamesgifford/hold/` (not Laravel's maintenance mode). A GLOBAL
-`PrelaunchMode` middleware renders the holding page for every request while
-active, except the package's own routes and holders of a valid bypass cookie.
-Toggle it with the commands, never by writing the flag file yourself. The
-response status is `config('jamesgifford.hold.prelaunch.status_code')` (200 to
-stay indexable, or 503). Because `storage_path()` is the same physical
-directory regardless of `APP_ENV`, a flag file left over from local browsing
-would otherwise silently intercept a consuming app's own test suite —
-`PrelaunchMode` no-ops (and logs a warning) while `app()->environment('testing')`
-unless `config('jamesgifford.hold.prelaunch.enforce_in_testing')` is `true`.
+**Prelaunch ("coming soon")** — package-owned, activated one of two ways (see
+`HoldState::source()`, returning `'file'`, `'env'`, or `null`):
 
-**Maintenance** — Laravel's native `php artisan down`, untouched. The package
-keeps its own routes reachable while down (a container-bound subclass of
+1. **File-backed (default):** a flag file under `storage/jamesgifford/hold/`,
+   toggled by `jamesgifford:hold:enable prelaunch` / `:disable`. Never write
+   the flag file yourself.
+2. **Env-forced:** `config('jamesgifford.hold.prelaunch.forced')`, backed by
+   `HOLD_PRELAUNCH=true` (read via `env()` in `config/hold.php` only — safe
+   under `config:cache`). For ephemeral hosting (e.g. Laravel Cloud) where
+   local disk does not survive a deploy. `HoldState::isForced()` reports it;
+   `isActive()` is true for either source, env taking precedence if both
+   are somehow set. **Cannot be turned off from the console** — `:disable`
+   says so and exits non-zero instead of pretending success; only unsetting
+   `HOLD_PRELAUNCH` and redeploying ends it. Since `:enable` is never run
+   under this mode, there's no token minted the normal way — use
+   `jamesgifford:hold:preview` to mint/re-mint one for either source.
+
+A GLOBAL `PrelaunchMode` middleware renders the holding page for every request
+while EITHER source is active, except the package's own routes and holders of
+a valid bypass cookie. The response status is
+`config('jamesgifford.hold.prelaunch.status_code')` (200 to stay indexable, or
+503). Because `storage_path()` is the same physical directory regardless of
+`APP_ENV`, a flag file left over from local browsing would otherwise silently
+intercept a consuming app's own test suite — `PrelaunchMode` no-ops (and logs
+a warning) while `app()->environment('testing')` unless
+`config('jamesgifford.hold.prelaunch.enforce_in_testing')` is `true`.
+
+**Maintenance** — Laravel's native `php artisan down`, untouched (no env-var
+activation for this mode — only the native mechanism). The package keeps its
+own routes reachable while down (a container-bound subclass of
 `PreventRequestsDuringMaintenance` merges the package route URIs into the
 maintenance `except` list). The maintenance capture page is
 `resources/views/vendor/hold/maintenance.blade.php`; `resources/views/errors/503.blade.php`
 is a thin shim that `@include`s it. You can run `enable maintenance` (it invokes
 `down` with a bypass secret) or a plain `php artisan down` / `php artisan up`
 directly — if you run `down` natively while prelaunch is active, Hold self-heals
-by auto-disabling prelaunch (one hold at a time).
+by auto-disabling prelaunch (one hold at a time). Self-heal can't clear an
+**env-forced** hold (nothing to unset from a listener) — it logs a WARNING that
+both modes are now active instead; maintenance still wins at request time
+(its middleware runs first).
 
 ## Signup capture
 
@@ -94,12 +113,25 @@ opt-out, so a third party can't re-arm an address they don't own.
 - `jamesgifford:hold:enable {mode}` — activate a hold: `prelaunch` (prints a signed
   preview link) or `maintenance` (invokes `down` with a bypass secret and prints
   the secret link). Refuses if a hold is already active — no override; disable first.
-  Flag: `--retry=<seconds>` (maintenance only) sets the `Retry-After` header via
-  `down --retry`, overriding `maintenance.retry_after`; `0` omits it.
+  `enable prelaunch` while prelaunch is already env-forced (`HOLD_PRELAUNCH`)
+  reports that clearly and exits SUCCESS without writing a flag file — not
+  treated as the "already active" error. Flag: `--retry=<seconds>` (maintenance
+  only) sets the `Retry-After` header via `down --retry`, overriding
+  `maintenance.retry_after`; `0` omits it.
 - `jamesgifford:hold:disable` — deactivate whichever hold is active (prelaunch and/or
   maintenance); may auto-schedule the launch/restore announcement (see config).
   On a `sync` queue with a non-zero delay it REFUSES to schedule and says so —
-  the change-of-mind window cannot exist there.
+  the change-of-mind window cannot exist there. CANNOT turn off an env-forced
+  prelaunch hold — reports that and exits non-zero (after removing any stray
+  flag file first).
+- `jamesgifford:hold:preview` — mint a fresh prelaunch bypass token and print
+  its signed preview link, without changing whether prelaunch is active. Works
+  for either activation source (file or env); re-running invalidates the
+  previous link/cookie. Refuses (non-zero) if prelaunch isn't active at all.
+  Warns if the resolved `prelaunch.token_store` won't persist (e.g. `array`).
+- `jamesgifford:hold:status` — report which hold is active, its source
+  (`env`/`file`), and whether a bypass token currently exists. Always exits
+  successfully; read-only.
 - `jamesgifford:hold:announce` — email the launch/restore announcement now.
   Idempotent (stamps `notified_at`, never double-sends) and only ever emails
   verified, subscribed signups. Flags: `--context=prelaunch|maintenance`
@@ -129,6 +161,11 @@ Published to `config/jamesgifford/hold.php`:
 - `prelaunch.enforce_in_testing` (default `false`) — whether an active prelaunch
   hold is actually enforced while `APP_ENV` is `testing`; `false` means a
   leftover flag file no-ops instead of intercepting your own test suite.
+- `prelaunch.forced` (default `false`, `HOLD_PRELAUNCH`) — force prelaunch on
+  regardless of the flag file; for ephemeral hosting. Cannot be disabled from
+  the console. `prelaunch.token_store` (default `null` → `cache.default`,
+  `HOLD_PRELAUNCH_TOKEN_STORE`) — cache store for the bypass token under
+  env-forced mode; ignored in file-backed mode.
 - `maintenance.retry_after` (default 3600) — seconds sent as the `Retry-After`
   header when maintenance is enabled through Hold; `--retry` on `enable` overrides
   it; `0`/`null` omits the header. A bare `artisan down` needs `--retry` manually.

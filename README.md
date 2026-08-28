@@ -160,6 +160,40 @@ the link printed by the most recent `enable`.
 > "Coming soon" page. Set `prelaunch.enforce_in_testing` to `true` if you
 > deliberately want a test to see the holding page.
 
+#### Two ways to activate prelaunch
+
+| | **Console command** (default) | **Environment variable** |
+| --- | --- | --- |
+| Activate with | `jamesgifford:hold:enable prelaunch` | `HOLD_PRELAUNCH=true`, then redeploy |
+| Deactivate with | `jamesgifford:hold:disable` | Unset `HOLD_PRELAUNCH`, then redeploy — **cannot** be turned off from the console |
+| State lives in | The flag file (`storage/jamesgifford/hold/`) | Config, read from the env var at boot |
+| Right for | Local dev, a single traditional server — instant toggling, no deploy needed | Ephemeral hosting (e.g. **Laravel Cloud**), where local disk does not survive a deploy |
+
+Set `HOLD_PRELAUNCH=true` to force prelaunch on regardless of the flag file —
+`HoldState::isActive()` and the `PrelaunchMode` middleware honor it exactly like
+an active flag file. It's read via `env()` **in `config/hold.php` only** (never
+at runtime elsewhere), so it's safe under `config:cache`. If both are somehow
+active at once (e.g. a leftover flag file from before you switched to the env
+var), the env var wins.
+
+Because `enable prelaunch` is never run under env-forced mode, there is no
+per-activation bypass token minted the way there normally is. Use
+`jamesgifford:hold:preview` instead — it mints (or re-mints) the token and
+prints a working signed preview link, for either activation source, without
+changing whether prelaunch is active. Re-running it invalidates the previous
+link and cookie, the same revocation `disable` → `enable` already gives you.
+
+The token itself can't live in the flag file under env-forced mode (same
+disk-doesn't-survive-a-deploy problem), so it's stored in a cache store
+instead — `prelaunch.token_store` (default: `config('cache.default')`).
+Point it at something durable (`database`, `redis`, …); `preview` warns if it
+detects a non-persistent store (e.g. `array`), since the minted token — not
+the hold itself — would be lost on the next deploy or restart.
+
+Run `jamesgifford:hold:status` any time to see which source (if either) is
+active and whether a bypass token currently exists — worth knowing since
+env-forced state leaves no trace on the filesystem to `ls`.
+
 ### Maintenance
 
 `enable maintenance` runs Laravel's native `php artisan down` for you (with a
@@ -179,6 +213,13 @@ backed by a shared store, same as you would for a bare `artisan down`.
 bypasses Hold's one-hold check — so Hold **self-heals**: if prelaunch is active
 when maintenance comes up natively, Hold automatically disables prelaunch (logging
 an informational line) so only one hold is ever active.
+
+Self-heal can't clear an **env-forced** prelaunch hold — there's no env var to
+unset from a listener. If maintenance comes up natively while `HOLD_PRELAUNCH`
+is set, both modes end up active; Hold logs a **warning** saying so rather than
+silently failing to heal. Maintenance still takes precedence at request time
+(its middleware runs before `PrelaunchMode`), but the invariant isn't fully
+restored until you unset `HOLD_PRELAUNCH` and redeploy.
 
 **Retry-After.** `enable maintenance` passes `maintenance.retry_after` (default
 `3600` seconds) through to `down --retry`, which Laravel echoes back as the
@@ -524,6 +565,8 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `prelaunch.bypass_cookie_name` | `hold_bypass` | Name of the preview bypass cookie. |
 | `prelaunch.bypass_cookie_lifetime_days` | `30` | Bypass cookie lifetime. |
 | `prelaunch.enforce_in_testing` | `false` | Whether an active prelaunch hold is actually enforced while `APP_ENV` is `testing`. `false` means a leftover flag file no-ops (with a logged warning) instead of intercepting your own test suite. |
+| `prelaunch.forced` | `false` (`HOLD_PRELAUNCH`) | Forces prelaunch on regardless of the flag file — for ephemeral hosting. See [Two ways to activate prelaunch](#two-ways-to-activate-prelaunch). Cannot be turned off from the console. |
+| `prelaunch.token_store` | `null` → `cache.default` (`HOLD_PRELAUNCH_TOKEN_STORE`) | Cache store that persists the bypass token under env-forced prelaunch. Ignored in command-driven (flag file) mode. |
 | `maintenance.retry_after` | `3600` | Seconds sent as the `Retry-After` header when maintenance is enabled via `enable maintenance` (`--retry` overrides; `0`/`null` omits it). Only applies to holds enabled through Hold — a bare `artisan down` needs `--retry` passed manually. |
 | `appearance.*` | see [Appearance](#appearance) | Set colors once for every template, or scope them to just the holding pages or just the mail templates. |
 | `notifications.team_addresses` | `[]` | Who receives the "hold enabled" notice. |
@@ -889,8 +932,10 @@ outright without `--force`.
 | --- | --- | --- |
 | `jamesgifford:hold:setup` | `--force`, `--migrate` | Publish config, migration, model, views; optionally migrate. |
 | `jamesgifford:hold:uninstall` | `--force`, `--keep-data` | Remove everything published and drop the table (`--keep-data` to keep it). |
-| `jamesgifford:hold:enable {mode}` | `--retry` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). `--retry=<seconds>` overrides `maintenance.retry_after` for a maintenance enable. |
-| `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. |
+| `jamesgifford:hold:enable {mode}` | `--retry` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). `--retry=<seconds>` overrides `maintenance.retry_after` for a maintenance enable. `enable prelaunch` no-ops (success, no flag file) and says so when prelaunch is already forced on via `HOLD_PRELAUNCH`. |
+| `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. Cannot turn off an env-forced prelaunch hold (`HOLD_PRELAUNCH`) — reports that and exits non-zero instead, after clearing any stray flag file. |
+| `jamesgifford:hold:preview` | — | Mint a fresh prelaunch bypass token and print its signed preview link, without changing whether prelaunch is active. Works for either activation source; re-running invalidates the previous link and cookie. |
+| `jamesgifford:hold:status` | — | Report which hold is active, its source (`env` or `file`), and whether a bypass token currently exists. |
 | `jamesgifford:hold:announce` | `--context`, `--dry-run`, `--yes`, `--test` | Email the launch/restore announcement — prints the recipient count and confirms first (`--yes` skips it); `--test=<address>` sends one rehearsal email touching no rows. |
 | `jamesgifford:hold:unsubscribe {email}` | `--resubscribe` | Operator tool: set or clear a signup's unsubscribe state. |
 

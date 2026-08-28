@@ -23,6 +23,8 @@ it('merges every documented config default', function () {
         'bypass_cookie_name' => 'hold_bypass',
         'bypass_cookie_lifetime_days' => 30,
         'enforce_in_testing' => false,
+        'forced' => false,
+        'token_store' => null,
     ]);
 
     expect($config['maintenance'])->toMatchArray([

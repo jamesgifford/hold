@@ -192,7 +192,7 @@ function holdConfigReads(): array
 it('finds every command in the source, so the guards below have something to check', function () {
     // A parser that silently matched nothing would make every command guard pass
     // vacuously, which is exactly the failure mode these tests exist to prevent.
-    expect(holdCommandInventory())->toHaveCount(6);
+    expect(holdCommandInventory())->toHaveCount(8);
 });
 
 it('documents every command that exists in the code', function () {
@@ -498,6 +498,31 @@ it('reads database credentials from the environment, never hardcoded in a test',
         if (preg_match('/[\'"](?:127\.0\.0\.1|localhost)[\'"]\s*,?\s*$/m', $contents) === 1
             && preg_match('/DB_HOST|database\.connections/', $contents) === 1) {
             $offenders[] = basename($path).' hardcodes a database host';
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
+
+it('never calls env() in src, only in the config file', function () {
+    // config/hold.php (checked separately, outside this scan) is the ONE
+    // place allowed to read env() directly — everywhere else must read
+    // through config('jamesgifford.hold....'), so config:cache can't leave a
+    // value stale. HOLD_PRELAUNCH is the motivating case: it MUST still be
+    // seen after config:cache bakes the merged array to disk.
+    $offenders = [];
+
+    foreach (holdFiles('src', '/\.php$/') as $path => $contents) {
+        foreach (explode("\n", $contents) as $lineNumber => $line) {
+            $trimmed = ltrim($line);
+
+            if ($trimmed === '' || str_starts_with($trimmed, '*') || str_starts_with($trimmed, '//')) {
+                continue;
+            }
+
+            if (preg_match('/\benv\s*\(/', $line) === 1) {
+                $offenders[] = basename($path).':'.($lineNumber + 1);
+            }
         }
     }
 

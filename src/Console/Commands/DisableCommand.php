@@ -22,6 +22,13 @@ use JamesGifford\Hold\Support\AnnouncementScheduler;
  * prelaunch schedules the launch announcement here. If BOTH holds were somehow
  * active, the maintenance context wins — it's what visitors actually saw — so
  * the prelaunch announcement is suppressed to avoid a duplicate.
+ *
+ * An env-forced prelaunch hold (HoldState::isForced()) is a special case:
+ * this command CANNOT turn it off — only unsetting HOLD_PRELAUNCH and
+ * redeploying can — so it says that plainly and exits non-zero instead of
+ * claiming success. A stray flag file left over from before the app switched
+ * to env-forced mode is still removed (and reported), since that part IS
+ * within this command's power; the env-forced hold itself just stays active.
  */
 final class DisableCommand extends Command
 {
@@ -35,6 +42,7 @@ final class DisableCommand extends Command
     {
         $maintenance = $this->laravel->isDownForMaintenance();
         $prelaunch = $state->isActive();
+        $prelaunchForced = $state->isForced();
 
         if (! $maintenance && ! $prelaunch) {
             $this->info('No hold is active. Nothing to do.');
@@ -43,23 +51,47 @@ final class DisableCommand extends Command
             return self::SUCCESS;
         }
 
+        $ok = true;
+
         if ($maintenance && ! $this->disableMaintenance()) {
-            return self::FAILURE;
+            $ok = false;
         }
 
-        if ($prelaunch) {
+        if ($prelaunch && $prelaunchForced) {
+            $this->reportPrelaunchCannotBeDisabled($state);
+            $ok = false;
+        } elseif ($prelaunch) {
             // When maintenance was also active, its `up` already scheduled the
             // (preferred) maintenance announcement — don't also schedule prelaunch.
             $this->disablePrelaunch($state, suppressAnnounce: $maintenance);
         }
 
-        if ($maintenance && $prelaunch) {
+        if ($maintenance && $prelaunch && ! $prelaunchForced) {
             $this->warn('Both holds were active — disabled both, announcing with the maintenance context.');
         }
 
         $this->printHoldStatus();
 
-        return self::SUCCESS;
+        return $ok ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Clear any stray flag file (harmless either way — env forcing means
+     * isActive() reads true regardless), then explain that the hold itself
+     * can only be ended by unsetting the env var and redeploying.
+     */
+    private function reportPrelaunchCannotBeDisabled(HoldState $state): void
+    {
+        $hadStrayFile = is_file($state->flagPath());
+
+        $state->disable();
+
+        if ($hadStrayFile) {
+            $this->line('Removed a stray prelaunch flag file (harmless — the hold stays active via env, see below).');
+        }
+
+        $this->error('Prelaunch mode is active via the HOLD_PRELAUNCH environment variable.');
+        $this->line('This cannot be disabled from the console — unset it and redeploy to end the hold.');
     }
 
     private function disableMaintenance(): bool

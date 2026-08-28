@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace JamesGifford\Hold\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use JamesGifford\Hold\Console\Commands\Concerns\InteractsWithHoldModes;
 use JamesGifford\Hold\HoldSignupContext;
@@ -42,6 +40,14 @@ final class EnableCommand extends Command
             $this->error("Unknown mode '{$mode}'. Use 'prelaunch' or 'maintenance'.");
 
             return self::FAILURE;
+        }
+
+        if ($mode === 'prelaunch' && $state->isForced()) {
+            $this->info('Prelaunch mode is already active via the HOLD_PRELAUNCH environment variable.');
+            $this->line('No flag file was written — toggling it requires unsetting HOLD_PRELAUNCH and redeploying.');
+            $this->printHoldStatus();
+
+            return self::SUCCESS;
         }
 
         if (($active = $this->activeHoldMode()) !== null) {
@@ -140,23 +146,5 @@ final class EnableCommand extends Command
         }
 
         return (string) $retry;
-    }
-
-    private function printPreviewLink(HoldState $state): void
-    {
-        if (! Route::has('hold.preview')) {
-            $this->newLine();
-            $this->line('Package routes are not registered (routes.register = false), so no preview');
-            $this->line('link can be generated. Wire the published routes stub to enable /preview.');
-
-            return;
-        }
-
-        // Carry the current activation token so the link is revoked the moment
-        // the hold is disabled (and re-enabling issues a fresh one).
-        $this->newLine();
-        $this->line('Preview the real app (sets a bypass cookie) with this signed link:');
-        $this->newLine();
-        $this->line('    '.URL::signedRoute('hold.preview', ['token' => $state->token()]));
     }
 }

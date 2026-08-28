@@ -12,6 +12,15 @@ parameters:
         - routes
         - tests
 
+    # Larastan's noEnvCallsOutsideOfConfig rule defaults to config_path(),
+    # which resolves against the Testbench skeleton app used to analyse this
+    # package, not this repo's own config/hold.php — so without this, every
+    # legitimate env() call in config/hold.php (e.g. HOLD_PRELAUNCH) is
+    # flagged as if it were outside the config directory. Point it at the
+    # real one instead.
+    configDirectories:
+        - %currentWorkingDirectory%/config
+
     # Deliberately NO baseline file. A baseline records today's findings as
     # permanently acceptable, which is how a "passing" analyser ends up proving
     # nothing. Findings get fixed; the few that cannot be are suppressed inline

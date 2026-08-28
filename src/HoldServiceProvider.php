@@ -14,7 +14,9 @@ use Illuminate\Support\ServiceProvider;
 use JamesGifford\Hold\Console\Commands\AnnounceCommand;
 use JamesGifford\Hold\Console\Commands\DisableCommand;
 use JamesGifford\Hold\Console\Commands\EnableCommand;
+use JamesGifford\Hold\Console\Commands\PreviewCommand;
 use JamesGifford\Hold\Console\Commands\SetupCommand;
+use JamesGifford\Hold\Console\Commands\StatusCommand;
 use JamesGifford\Hold\Console\Commands\UninstallCommand;
 use JamesGifford\Hold\Console\Commands\UnsubscribeCommand;
 use JamesGifford\Hold\Events\HoldSignupCaptured;
@@ -42,7 +44,7 @@ use JamesGifford\Hold\Listeners\SendTeamHoldNotice;
  *  - Load + namespace the package views, and register publishable assets
  *  - Push the PrelaunchMode global middleware (a no-op unless a hold is active)
  *  - Register the package routes (when routes.register is true)
- *  - Register the six `jamesgifford:hold:*` console commands
+ *  - Register the eight `jamesgifford:hold:*` console commands
  */
 class HoldServiceProvider extends ServiceProvider
 {
@@ -74,6 +76,8 @@ class HoldServiceProvider extends ServiceProvider
                 UninstallCommand::class,
                 EnableCommand::class,
                 DisableCommand::class,
+                PreviewCommand::class,
+                StatusCommand::class,
                 AnnounceCommand::class,
                 UnsubscribeCommand::class,
             ]);

@@ -74,6 +74,29 @@ return [
         // warning). Set this to true if you deliberately want a test to see
         // the holding page.
         'enforce_in_testing' => false,
+
+        // Force prelaunch mode on via an environment variable instead of the
+        // flag file — for ephemeral hosting (e.g. Laravel Cloud) where local
+        // disk does not survive a deploy, an env var does. Set
+        // HOLD_PRELAUNCH=true to activate; leave it unset (or false) to
+        // control prelaunch with the `jamesgifford:hold:enable prelaunch` /
+        // `:disable` commands as usual. Toggling this requires a redeploy —
+        // it CANNOT be turned off from the console (`:disable` will say so
+        // and exit non-zero). Read via env() HERE, in the config file, never
+        // at runtime elsewhere: config:cache would otherwise bake in a stale
+        // value from whatever the cache-building process saw.
+        'forced' => (bool) env('HOLD_PRELAUNCH', false),
+
+        // Cache store that persists the prelaunch bypass token while
+        // prelaunch is forced on via HOLD_PRELAUNCH (the flag file is what's
+        // unreliable on ephemeral hosting, so the token can't live there
+        // either). Null uses config('cache.default'). Ignored entirely in
+        // command-driven (flag file) mode, where the token is still the
+        // file's own contents. Point this at a store backed by persistent
+        // storage (e.g. 'database', 'redis') — an 'array' or 'null' store
+        // loses the token on every deploy, defeating the point;
+        // `jamesgifford:hold:preview` warns when it detects one.
+        'token_store' => env('HOLD_PRELAUNCH_TOKEN_STORE'),
     ],
 
     /*
