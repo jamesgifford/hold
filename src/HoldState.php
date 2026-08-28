@@ -17,7 +17,7 @@ use RuntimeException;
  *    toggled by `jamesgifford:hold:enable prelaunch` / `:disable`. Independent
  *    of Laravel's native maintenance mode and survives config caching.
  *  - ENV-FORCED: `config('jamesgifford.hold.prelaunch.forced')` (backed by
- *    HOLD_PRELAUNCH, read in config/hold.php — never at runtime, so
+ *    JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED, read in config/hold.php — never at runtime, so
  *    config:cache can't go stale). For ephemeral hosting where local disk does
  *    not survive a deploy. Cannot be turned off from the console — only by
  *    unsetting the env var and redeploying. See `source()`.
@@ -63,7 +63,7 @@ final class HoldState
     }
 
     /**
-     * Whether prelaunch is forced on via config (HOLD_PRELAUNCH). This
+     * Whether prelaunch is forced on via config (JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED). This
      * source cannot be turned off from the console — see DisableCommand.
      */
     public function isForced(): bool

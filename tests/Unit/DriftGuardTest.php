@@ -508,7 +508,7 @@ it('never calls env() in src, only in the config file', function () {
     // config/hold.php (checked separately, outside this scan) is the ONE
     // place allowed to read env() directly — everywhere else must read
     // through config('jamesgifford.hold....'), so config:cache can't leave a
-    // value stale. HOLD_PRELAUNCH is the motivating case: it MUST still be
+    // value stale. JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED is the motivating case: it MUST still be
     // seen after config:cache bakes the merged array to disk.
     $offenders = [];
 

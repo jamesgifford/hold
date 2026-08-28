@@ -24,7 +24,7 @@ use JamesGifford\Hold\Support\AnnouncementScheduler;
  * the prelaunch announcement is suppressed to avoid a duplicate.
  *
  * An env-forced prelaunch hold (HoldState::isForced()) is a special case:
- * this command CANNOT turn it off — only unsetting HOLD_PRELAUNCH and
+ * this command CANNOT turn it off — only unsetting JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED and
  * redeploying can — so it says that plainly and exits non-zero instead of
  * claiming success. A stray flag file left over from before the app switched
  * to env-forced mode is still removed (and reported), since that part IS
@@ -90,7 +90,7 @@ final class DisableCommand extends Command
             $this->line('Removed a stray prelaunch flag file (harmless — the hold stays active via env, see below).');
         }
 
-        $this->error('Prelaunch mode is active via the HOLD_PRELAUNCH environment variable.');
+        $this->error('Prelaunch mode is active via the JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED environment variable.');
         $this->line('This cannot be disabled from the console — unset it and redeploy to end the hold.');
     }
 

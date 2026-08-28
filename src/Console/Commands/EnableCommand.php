@@ -43,8 +43,8 @@ final class EnableCommand extends Command
         }
 
         if ($mode === 'prelaunch' && $state->isForced()) {
-            $this->info('Prelaunch mode is already active via the HOLD_PRELAUNCH environment variable.');
-            $this->line('No flag file was written — toggling it requires unsetting HOLD_PRELAUNCH and redeploying.');
+            $this->info('Prelaunch mode is already active via the JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED environment variable.');
+            $this->line('No flag file was written — toggling it requires unsetting JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED and redeploying.');
             $this->printHoldStatus();
 
             return self::SUCCESS;

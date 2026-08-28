@@ -26,13 +26,13 @@ active; run `disable` first.
    toggled by `jamesgifford:hold:enable prelaunch` / `:disable`. Never write
    the flag file yourself.
 2. **Env-forced:** `config('jamesgifford.hold.prelaunch.forced')`, backed by
-   `HOLD_PRELAUNCH=true` (read via `env()` in `config/hold.php` only — safe
+   `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED=true` (read via `env()` in `config/hold.php` only — safe
    under `config:cache`). For ephemeral hosting (e.g. Laravel Cloud) where
    local disk does not survive a deploy. `HoldState::isForced()` reports it;
    `isActive()` is true for either source, env taking precedence if both
    are somehow set. **Cannot be turned off from the console** — `:disable`
    says so and exits non-zero instead of pretending success; only unsetting
-   `HOLD_PRELAUNCH` and redeploying ends it. Since `:enable` is never run
+   `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED` and redeploying ends it. Since `:enable` is never run
    under this mode, there's no token minted the normal way — use
    `jamesgifford:hold:preview` to mint/re-mint one for either source.
 
@@ -113,7 +113,7 @@ opt-out, so a third party can't re-arm an address they don't own.
 - `jamesgifford:hold:enable {mode}` — activate a hold: `prelaunch` (prints a signed
   preview link) or `maintenance` (invokes `down` with a bypass secret and prints
   the secret link). Refuses if a hold is already active — no override; disable first.
-  `enable prelaunch` while prelaunch is already env-forced (`HOLD_PRELAUNCH`)
+  `enable prelaunch` while prelaunch is already env-forced (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`)
   reports that clearly and exits SUCCESS without writing a flag file — not
   treated as the "already active" error. Flag: `--retry=<seconds>` (maintenance
   only) sets the `Retry-After` header via `down --retry`, overriding
@@ -161,10 +161,10 @@ Published to `config/jamesgifford/hold.php`:
 - `prelaunch.enforce_in_testing` (default `false`) — whether an active prelaunch
   hold is actually enforced while `APP_ENV` is `testing`; `false` means a
   leftover flag file no-ops instead of intercepting your own test suite.
-- `prelaunch.forced` (default `false`, `HOLD_PRELAUNCH`) — force prelaunch on
+- `prelaunch.forced` (default `false`, `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) — force prelaunch on
   regardless of the flag file; for ephemeral hosting. Cannot be disabled from
   the console. `prelaunch.token_store` (default `null` → `cache.default`,
-  `HOLD_PRELAUNCH_TOKEN_STORE`) — cache store for the bypass token under
+  `JAMESGIFFORD_HOLD_PRELAUNCH_TOKEN_STORE`) — cache store for the bypass token under
   env-forced mode; ignored in file-backed mode.
 - `maintenance.retry_after` (default 3600) — seconds sent as the `Retry-After`
   header when maintenance is enabled through Hold; `--retry` on `enable` overrides

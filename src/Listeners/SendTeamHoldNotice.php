@@ -40,7 +40,7 @@ final class SendTeamHoldNotice
             $this->state->disable();
 
             if ($wasForced) {
-                Log::warning('Hold: maintenance mode was enabled while prelaunch is active via the HOLD_PRELAUNCH environment variable. Both modes are now active — the env var cannot be unset from here, so prelaunch stays forced on. Maintenance takes precedence at request time (its middleware runs first), but unset HOLD_PRELAUNCH and redeploy to fully restore the one-hold invariant.');
+                Log::warning('Hold: maintenance mode was enabled while prelaunch is active via the JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED environment variable. Both modes are now active — the env var cannot be unset from here, so prelaunch stays forced on. Maintenance takes precedence at request time (its middleware runs first), but unset JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED and redeploy to fully restore the one-hold invariant.');
             } else {
                 Log::info('Hold: prelaunch mode auto-disabled because maintenance mode was enabled (only one hold may be active at a time).');
             }

@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Prelaunch mode can now be activated via `HOLD_PRELAUNCH=true` as an
+- **Prelaunch mode can now be activated via `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED=true` as an
   alternative to `jamesgifford:hold:enable prelaunch`**, for ephemeral hosting
   (e.g. Laravel Cloud) where the flag file's local disk does not survive a
   deploy. `HoldState::isActive()` honors either source; `source()` /
   `isForced()` report which one is active. An env-forced hold **cannot be
   turned off from the console** — `jamesgifford:hold:disable` says so and
-  exits non-zero instead of claiming success; only unsetting `HOLD_PRELAUNCH`
+  exits non-zero instead of claiming success; only unsetting `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`
   and redeploying ends it (it does still remove a stray leftover flag file
   along the way). `jamesgifford:hold:enable prelaunch` no-ops cleanly (exit 0,
   no flag file written) when prelaunch is already forced on. The maintenance
@@ -31,8 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`jamesgifford:hold:status`** — reports which hold is active, its source
   (`env`/`file`), and whether a bypass token currently exists. Mainly useful
   for env-forced mode, whose state leaves no trace on the filesystem.
-- New config keys: `prelaunch.forced` (`HOLD_PRELAUNCH`) and
-  `prelaunch.token_store` (`HOLD_PRELAUNCH_TOKEN_STORE`).
+- New config keys: `prelaunch.forced` (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) and
+  `prelaunch.token_store` (`JAMESGIFFORD_HOLD_PRELAUNCH_TOKEN_STORE`).
 
 ### Fixed
 

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use JamesGifford\Hold\HoldState;
 
 /*
- * Env-forced prelaunch: `prelaunch.forced` (backed by HOLD_PRELAUNCH) is an
+ * Env-forced prelaunch: `prelaunch.forced` (backed by JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED) is an
  * ALTERNATIVE way to activate prelaunch mode, for ephemeral hosting where the
  * flag file does not survive a deploy. These tests drive it through config()
  * directly rather than putenv() — the config key IS the tested surface; env()
@@ -59,13 +59,13 @@ it('reports no source and is inactive when neither is set', function () {
 });
 
 it('detects the forced state purely through config(), the way config:cache would present it', function () {
-    // No putenv() anywhere in this file: HOLD_PRELAUNCH is read via env()
+    // No putenv() anywhere in this file: JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED is read via env()
     // exactly once, inside config/hold.php, at config-merge time (see the
     // "never calls env() outside the config file" drift guard). Detection
     // here reading config()->set() directly — with no real env var ever
     // touched — proves isForced()/isActive() cannot be looking past the
     // merged config array, which is exactly what config:cache freezes.
-    expect(getenv('HOLD_PRELAUNCH'))->toBeFalsy();
+    expect(getenv('JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED'))->toBeFalsy();
 
     config()->set('jamesgifford.hold.prelaunch.forced', true);
 
@@ -124,7 +124,7 @@ it('enable prelaunch reports env-forced state clearly and writes no flag file', 
 
     $this->artisan('jamesgifford:hold:enable', ['mode' => 'prelaunch'])
         ->assertSuccessful()
-        ->expectsOutputToContain('HOLD_PRELAUNCH environment variable');
+        ->expectsOutputToContain('JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED environment variable');
 
     expect(is_file(app(HoldState::class)->flagPath()))->toBeFalse();
 });
@@ -146,7 +146,7 @@ it('disable cannot turn off an env-forced hold and exits non-zero', function () 
 
     $this->artisan('jamesgifford:hold:disable')
         ->assertFailed()
-        ->expectsOutputToContain('HOLD_PRELAUNCH')
+        ->expectsOutputToContain('JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED')
         ->expectsOutputToContain('cannot be disabled')
         ->expectsOutputToContain('Active hold: prelaunch (env)');
 

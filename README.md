@@ -164,12 +164,12 @@ the link printed by the most recent `enable`.
 
 | | **Console command** (default) | **Environment variable** |
 | --- | --- | --- |
-| Activate with | `jamesgifford:hold:enable prelaunch` | `HOLD_PRELAUNCH=true`, then redeploy |
-| Deactivate with | `jamesgifford:hold:disable` | Unset `HOLD_PRELAUNCH`, then redeploy — **cannot** be turned off from the console |
+| Activate with | `jamesgifford:hold:enable prelaunch` | `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED=true`, then redeploy |
+| Deactivate with | `jamesgifford:hold:disable` | Unset `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`, then redeploy — **cannot** be turned off from the console |
 | State lives in | The flag file (`storage/jamesgifford/hold/`) | Config, read from the env var at boot |
 | Right for | Local dev, a single traditional server — instant toggling, no deploy needed | Ephemeral hosting (e.g. **Laravel Cloud**), where local disk does not survive a deploy |
 
-Set `HOLD_PRELAUNCH=true` to force prelaunch on regardless of the flag file —
+Set `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED=true` to force prelaunch on regardless of the flag file —
 `HoldState::isActive()` and the `PrelaunchMode` middleware honor it exactly like
 an active flag file. It's read via `env()` **in `config/hold.php` only** (never
 at runtime elsewhere), so it's safe under `config:cache`. If both are somehow
@@ -215,11 +215,11 @@ when maintenance comes up natively, Hold automatically disables prelaunch (loggi
 an informational line) so only one hold is ever active.
 
 Self-heal can't clear an **env-forced** prelaunch hold — there's no env var to
-unset from a listener. If maintenance comes up natively while `HOLD_PRELAUNCH`
+unset from a listener. If maintenance comes up natively while `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`
 is set, both modes end up active; Hold logs a **warning** saying so rather than
 silently failing to heal. Maintenance still takes precedence at request time
 (its middleware runs before `PrelaunchMode`), but the invariant isn't fully
-restored until you unset `HOLD_PRELAUNCH` and redeploy.
+restored until you unset `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED` and redeploy.
 
 **Retry-After.** `enable maintenance` passes `maintenance.retry_after` (default
 `3600` seconds) through to `down --retry`, which Laravel echoes back as the
@@ -565,8 +565,8 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `prelaunch.bypass_cookie_name` | `hold_bypass` | Name of the preview bypass cookie. |
 | `prelaunch.bypass_cookie_lifetime_days` | `30` | Bypass cookie lifetime. |
 | `prelaunch.enforce_in_testing` | `false` | Whether an active prelaunch hold is actually enforced while `APP_ENV` is `testing`. `false` means a leftover flag file no-ops (with a logged warning) instead of intercepting your own test suite. |
-| `prelaunch.forced` | `false` (`HOLD_PRELAUNCH`) | Forces prelaunch on regardless of the flag file — for ephemeral hosting. See [Two ways to activate prelaunch](#two-ways-to-activate-prelaunch). Cannot be turned off from the console. |
-| `prelaunch.token_store` | `null` → `cache.default` (`HOLD_PRELAUNCH_TOKEN_STORE`) | Cache store that persists the bypass token under env-forced prelaunch. Ignored in command-driven (flag file) mode. |
+| `prelaunch.forced` | `false` (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) | Forces prelaunch on regardless of the flag file — for ephemeral hosting. See [Two ways to activate prelaunch](#two-ways-to-activate-prelaunch). Cannot be turned off from the console. |
+| `prelaunch.token_store` | `null` → `cache.default` (`JAMESGIFFORD_HOLD_PRELAUNCH_TOKEN_STORE`) | Cache store that persists the bypass token under env-forced prelaunch. Ignored in command-driven (flag file) mode. |
 | `maintenance.retry_after` | `3600` | Seconds sent as the `Retry-After` header when maintenance is enabled via `enable maintenance` (`--retry` overrides; `0`/`null` omits it). Only applies to holds enabled through Hold — a bare `artisan down` needs `--retry` passed manually. |
 | `appearance.*` | see [Appearance](#appearance) | Set colors once for every template, or scope them to just the holding pages or just the mail templates. |
 | `notifications.team_addresses` | `[]` | Who receives the "hold enabled" notice. |
@@ -932,8 +932,8 @@ outright without `--force`.
 | --- | --- | --- |
 | `jamesgifford:hold:setup` | `--force`, `--migrate` | Publish config, migration, model, views; optionally migrate. |
 | `jamesgifford:hold:uninstall` | `--force`, `--keep-data` | Remove everything published and drop the table (`--keep-data` to keep it). |
-| `jamesgifford:hold:enable {mode}` | `--retry` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). `--retry=<seconds>` overrides `maintenance.retry_after` for a maintenance enable. `enable prelaunch` no-ops (success, no flag file) and says so when prelaunch is already forced on via `HOLD_PRELAUNCH`. |
-| `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. Cannot turn off an env-forced prelaunch hold (`HOLD_PRELAUNCH`) — reports that and exits non-zero instead, after clearing any stray flag file. |
+| `jamesgifford:hold:enable {mode}` | `--retry` | Activate a hold — `prelaunch` or `maintenance` (refuses if one is already active). `--retry=<seconds>` overrides `maintenance.retry_after` for a maintenance enable. `enable prelaunch` no-ops (success, no flag file) and says so when prelaunch is already forced on via `JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`. |
+| `jamesgifford:hold:disable` | — | Deactivate whichever hold is active; optionally auto-announce. Cannot turn off an env-forced prelaunch hold (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) — reports that and exits non-zero instead, after clearing any stray flag file. |
 | `jamesgifford:hold:preview` | — | Mint a fresh prelaunch bypass token and print its signed preview link, without changing whether prelaunch is active. Works for either activation source; re-running invalidates the previous link and cookie. |
 | `jamesgifford:hold:status` | — | Report which hold is active, its source (`env` or `file`), and whether a bypass token currently exists. |
 | `jamesgifford:hold:announce` | `--context`, `--dry-run`, `--yes`, `--test` | Email the launch/restore announcement — prints the recipient count and confirms first (`--yes` skips it); `--test=<address>` sends one rehearsal email touching no rows. |

@@ -31,7 +31,7 @@ final class PreviewCommand extends Command
     {
         if (! $state->isActive()) {
             $this->error('No prelaunch hold is currently active.');
-            $this->line('Run `jamesgifford:hold:enable prelaunch`, or set HOLD_PRELAUNCH=true and redeploy.');
+            $this->line('Run `jamesgifford:hold:enable prelaunch`, or set JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED=true and redeploy.');
 
             return self::FAILURE;
         }

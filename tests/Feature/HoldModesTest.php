@@ -188,7 +188,7 @@ it('cannot self-heal an env-forced prelaunch hold, so it logs a warning that bot
 
     Log::shouldReceive('warning')
         ->once()
-        ->withArgs(fn (string $message) => str_contains($message, 'HOLD_PRELAUNCH') && str_contains($message, 'maintenance'));
+        ->withArgs(fn (string $message) => str_contains($message, 'JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED') && str_contains($message, 'maintenance'));
     Log::shouldReceive('info')->never();
 
     $this->artisan('down')->assertSuccessful();
