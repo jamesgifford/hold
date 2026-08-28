@@ -6,7 +6,9 @@ use Illuminate\Contracts\Console\Kernel;
 use JamesGifford\Hold\Console\Commands\AnnounceCommand;
 use JamesGifford\Hold\Console\Commands\DisableCommand;
 use JamesGifford\Hold\Console\Commands\EnableCommand;
+use JamesGifford\Hold\Console\Commands\PreviewCommand;
 use JamesGifford\Hold\Console\Commands\SetupCommand;
+use JamesGifford\Hold\Console\Commands\StatusCommand;
 use JamesGifford\Hold\Console\Commands\UninstallCommand;
 use JamesGifford\Hold\Console\Commands\UnsubscribeCommand;
 use JamesGifford\Hold\HoldServiceProvider;
@@ -20,7 +22,7 @@ it('boots the service provider and merges package config', function () {
         ->and(config('jamesgifford.hold.prelaunch.status_code'))->toBe(200);
 });
 
-it('registers all six namespaced commands', function () {
+it('registers all eight namespaced commands', function () {
     $commands = collect(app(Kernel::class)->all());
 
     expect($commands)->toHaveKeys([
@@ -28,6 +30,8 @@ it('registers all six namespaced commands', function () {
         'jamesgifford:hold:uninstall',
         'jamesgifford:hold:enable',
         'jamesgifford:hold:disable',
+        'jamesgifford:hold:preview',
+        'jamesgifford:hold:status',
         'jamesgifford:hold:announce',
         'jamesgifford:hold:unsubscribe',
     ]);
@@ -36,6 +40,8 @@ it('registers all six namespaced commands', function () {
         ->and($commands->get('jamesgifford:hold:uninstall'))->toBeInstanceOf(UninstallCommand::class)
         ->and($commands->get('jamesgifford:hold:enable'))->toBeInstanceOf(EnableCommand::class)
         ->and($commands->get('jamesgifford:hold:disable'))->toBeInstanceOf(DisableCommand::class)
+        ->and($commands->get('jamesgifford:hold:preview'))->toBeInstanceOf(PreviewCommand::class)
+        ->and($commands->get('jamesgifford:hold:status'))->toBeInstanceOf(StatusCommand::class)
         ->and($commands->get('jamesgifford:hold:announce'))->toBeInstanceOf(AnnounceCommand::class)
         ->and($commands->get('jamesgifford:hold:unsubscribe'))->toBeInstanceOf(UnsubscribeCommand::class);
 });

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use JamesGifford\Hold\Announcements\Announcer;
+use JamesGifford\Hold\Support\ConfigKeys;
 
 /*
  * Drift guards.
@@ -117,31 +118,6 @@ function holdCommandInventory(): array
 }
 
 /**
- * Flatten an array to dot keys, treating a list as a leaf value.
- *
- * @param  array<array-key, mixed>  $array
- * @return list<string>
- */
-function holdFlattenKeys(array $array, string $prefix = ''): array
-{
-    $keys = [];
-
-    foreach ($array as $key => $value) {
-        $dotted = $prefix === '' ? (string) $key : $prefix.'.'.$key;
-
-        if (is_array($value) && $value !== [] && ! array_is_list($value)) {
-            $keys = array_merge($keys, holdFlattenKeys($value, $dotted));
-
-            continue;
-        }
-
-        $keys[] = $dotted;
-    }
-
-    return $keys;
-}
-
-/**
  * @return list<string>
  */
 function holdDefinedConfigKeys(): array
@@ -149,7 +125,7 @@ function holdDefinedConfigKeys(): array
     /** @var array<string, mixed> $config */
     $config = require holdRoot().'/config/hold.php';
 
-    return holdFlattenKeys($config);
+    return array_keys(ConfigKeys::flatten($config));
 }
 
 /**

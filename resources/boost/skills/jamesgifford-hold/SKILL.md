@@ -108,8 +108,14 @@ opt-out, so a third party can't re-arm an address they don't own.
 
 - `jamesgifford:hold:setup` — install: publish config, the timestamped migration,
   the `App\Models\HoldSignup` model, and the views; create runtime storage.
-  Interactive run pauses to let you edit config, then honors it. Flags: `--force`
-  (unattended), `--migrate`.
+  Interactive run pauses to let you edit config, then honors it (the pause is
+  skipped when nothing was actually written to the config this run). Flags:
+  `--force` (unattended), `--migrate`. Re-running against an ALREADY-published
+  config never overwrites it, even to add new keys — it diffs your file against
+  the current shipped config by key and reports what's new / no longer read,
+  writing nothing (your `appearance` section and any other customization
+  survive). Only an undiffable config (syntax error, or it doesn't return a
+  plain array) offers to overwrite, interactively only — never unattended.
 - `jamesgifford:hold:enable {mode}` — activate a hold: `prelaunch` (prints a signed
   preview link) or `maintenance` (invokes `down` with a bypass secret and prints
   the secret link). Refuses if a hold is already active — no override; disable first.

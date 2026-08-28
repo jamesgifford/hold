@@ -76,14 +76,31 @@ php artisan jamesgifford:hold:setup --force --migrate
 The pause matters: right after the config is published, an interactive run stops
 so you can set your route prefix, team addresses, announce delay, model location,
 and so on. Every later step re-reads the (possibly edited) config — there are no
-hardcoded defaults past the pause.
+hardcoded defaults past the pause. On a re-run against an already-published
+config, there's nothing to pause for (see below) — the pause only happens when
+the config was actually just written.
 
-Setup is idempotent: re-running never publishes a second migration and never
-clobbers an edited config (it prompts, or skips silently when unattended). An
+Setup is idempotent: re-running never publishes a second migration. An
 already-published migration is left untouched — only a genuinely new one
 (e.g. the `add_verification_to_hold_signups_table` migration added in 1.4.0)
 gets published on a re-run, so upgrading the package and re-running `setup`
 is the normal way to pick up a new migration.
+
+**Re-running `setup` never clobbers your config, even to pick up new keys a
+version adds.** Instead of an overwrite prompt, it diffs your published
+`config/jamesgifford/hold.php` against the version you're now running — by
+key, not by text, so comments/formatting/reordering never matter — and reports
+the result without writing anything: which keys this version adds (add
+whichever you want; `CHANGELOG.md` explains what each one does) and which keys
+your file has that this version no longer reads (harmless to leave). Your
+`appearance` section, team addresses, whatever you've customized — untouched,
+every time.
+
+The only case where overwriting is even on the table is a config that can't be
+safely evaluated at all (a syntax error, most likely) — there, an interactive
+run asks whether to overwrite with the fresh template or abort setup entirely;
+an unattended run (`--force`, or a non-interactive terminal) leaves it
+untouched and reports the problem rather than guessing.
 
 ## Quick start
 

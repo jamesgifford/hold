@@ -214,15 +214,118 @@ it('pauses for review and offers the migration on an interactive run', function 
     expect(File::exists($this->appRoot.'/config/jamesgifford/hold.php'))->toBeTrue();
 });
 
-it('keeps an existing file when the overwrite prompt is declined', function () {
+// --- Config diff: never overwritten just because a re-run exists -----------
+//
+// A config that CAN be safely read (even a wildly incomplete one) is never
+// overwritten — the setup command diffs it against this version's shipped
+// config by key and reports the result, leaving the file untouched. Only a
+// file that can't be safely read at all falls back to asking.
+
+it('leaves an existing (incomplete) config untouched and reports what is new, without prompting', function () {
     File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
     File::put($this->appRoot.'/config/jamesgifford/hold.php', '<?php return []; // mine');
 
     $this->artisan('jamesgifford:hold:setup')
-        ->expectsConfirmation('config/jamesgifford/hold.php already exists. Overwrite it?', 'no')
+        ->expectsOutputToContain('left untouched')
+        ->expectsOutputToContain('New keys this version adds')
+        ->expectsOutputToContain('routes.register')
+        ->expectsConfirmation('Run the database migration now?', 'no')
+        ->assertSuccessful();
+
+    // Byte-for-byte untouched — not just "still contains my marker".
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toBe('<?php return []; // mine');
+});
+
+it('reports the published config as already up to date when nothing is missing', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    $shipped = File::get(dirname(__DIR__, 2).'/config/hold.php');
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', $shipped);
+
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('already has every key this version ships');
+
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toBe($shipped);
+});
+
+it('reports keys the published config has that this version no longer reads', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+
+    /** @var array<string, mixed> $shipped */
+    $shipped = require dirname(__DIR__, 2).'/config/hold.php';
+    $shipped['legacy_setting'] = 'old-value';
+    $published = '<?php return '.var_export($shipped, true).';';
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', $published);
+
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('no longer reads')
+        ->expectsOutputToContain('legacy_setting');
+
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toBe($published);
+});
+
+// --- Config diff: undiffable fallback ---------------------------------------
+//
+// A published config that can't be safely evaluated at all (syntax error, or
+// it doesn't return a plain array) can't be diffed — that's the only case
+// where overwriting is even on the table, and only interactively.
+
+it('offers to overwrite an undiffable config on an interactive run, and does so when chosen', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', '<?php return "not an array";');
+
+    $overwrite = 'Overwrite with the fresh package template (loses your customizations)';
+    $abort = 'Abort setup (keep my file exactly as it is)';
+
+    $this->artisan('jamesgifford:hold:setup')
+        ->expectsOutputToContain('could not safely compare')
+        ->expectsChoice('What would you like to do?', $overwrite, [$abort, $overwrite])
         ->expectsQuestion('Press ENTER to continue', '')
         ->expectsConfirmation('Run the database migration now?', 'no')
         ->assertSuccessful();
 
-    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toContain('// mine');
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))
+        ->toBe(File::get(dirname(__DIR__, 2).'/config/hold.php'));
+});
+
+it('aborts the whole setup run when overwrite is declined for an undiffable config', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', '<?php return "not an array";');
+
+    $overwrite = 'Overwrite with the fresh package template (loses your customizations)';
+    $abort = 'Abort setup (keep my file exactly as it is)';
+
+    $this->artisan('jamesgifford:hold:setup')
+        ->expectsChoice('What would you like to do?', $abort, [$abort, $overwrite])
+        ->expectsOutputToContain('Setup aborted')
+        ->assertFailed();
+
+    // Nothing past the config step ran.
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toBe('<?php return "not an array";')
+        ->and(File::exists($this->appRoot.'/app/Models/HoldSignup.php'))->toBeFalse()
+        ->and(File::glob($this->appRoot.'/database/migrations/*_create_hold_signups_table.php'))->toBe([]);
+});
+
+it('leaves an undiffable config untouched under --force instead of guessing', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', '<?php return "not an array";');
+
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('could not safely compare')
+        ->expectsOutputToContain('run interactively to choose what to do');
+
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toBe('<?php return "not an array";');
+});
+
+it('treats a genuine syntax error in the published config the same as any other undiffable file', function () {
+    File::makeDirectory($this->appRoot.'/config/jamesgifford', 0777, true);
+    File::put($this->appRoot.'/config/jamesgifford/hold.php', '<?php this is not valid php at all {{{');
+
+    $this->artisan('jamesgifford:hold:setup', ['--force' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('could not safely compare');
+
+    expect(File::get($this->appRoot.'/config/jamesgifford/hold.php'))->toBe('<?php this is not valid php at all {{{');
 });

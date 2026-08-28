@@ -34,6 +34,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New config keys: `prelaunch.forced` (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) and
   `prelaunch.token_store` (`JAMESGIFFORD_HOLD_PRELAUNCH_TOKEN_STORE`).
 
+### Changed
+
+- **`jamesgifford:hold:setup` no longer overwrites an already-published config,
+  even to pick up new keys a version adds** — re-running it against an
+  existing `config/jamesgifford/hold.php` now diffs it against the current
+  shipped config BY KEY (not by text, so comments/formatting/reordering never
+  matter) and reports what's new / no longer read, writing nothing. Previously,
+  answering yes to the "already exists — overwrite it?" prompt replaced the
+  whole file, silently discarding every customization (`appearance` included)
+  along with picking up the new keys. The prompt now only appears at all when
+  the published config can't be safely evaluated (a syntax error, or it
+  doesn't return a plain array) — there, an interactive run can still choose
+  to overwrite or abort the whole setup run; an unattended run leaves it
+  untouched and reports the problem instead of guessing (previously this case
+  could crash setup with an uncaught parse error). The review pause after the
+  config step is likewise skipped when nothing was actually written.
+
 ### Fixed
 
 - **A prelaunch flag file left over from local browsing could silently

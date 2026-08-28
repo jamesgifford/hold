@@ -8,20 +8,39 @@ use Illuminate\Console\Command;
 use JamesGifford\Hold\Console\Commands\Concerns\ManagesHoldAssets;
 use JamesGifford\Hold\HoldState;
 use JamesGifford\Hold\Installer\PackageMigration;
+use JamesGifford\Hold\Support\ConfigKeys;
+use Throwable;
 
 /**
  * Installs the package into the host app: publishes config, the migration
  * (timestamped), the HoldSignup model, and the views; creates runtime storage; and
  * optionally migrates.
  *
- * Interactivity is gated. Run interactively it PAUSES right after publishing the
- * config so you can review/edit it, then RE-READS the (possibly edited) config
- * and honors it for every later step — publish locations, model namespace, etc.
- * --force runs unattended (skips the pause and every overwrite prompt, never
- * clobbering an existing file); --migrate runs the migration in that mode.
+ * Config is NEVER blindly overwritten on a re-run. An already-published config
+ * is diffed against this version's shipped config BY KEY (a plain array
+ * comparison, not text/AST parsing) and the result — keys this version adds,
+ * keys it no longer reads — is reported without writing anything, so an app's
+ * customizations (appearance, addresses, whatever) survive picking up new
+ * config across an upgrade. Only when the published file can't be safely
+ * evaluated at all (a syntax error, or it doesn't return a plain array) does
+ * this fall back to asking whether to overwrite with the fresh template or
+ * abort the whole setup run — and only interactively; unattended runs leave
+ * an undiffable config untouched and report the problem instead of guessing.
+ * The model and views still use the older, simpler prompt-or-skip behavior:
+ * overwrite only with explicit confirmation (interactive), never touch an
+ * existing file otherwise.
  *
- * Idempotent: existing assets are skipped or prompted, and the migration is
- * never published twice (it is matched by stem regardless of its timestamp).
+ * Interactivity is otherwise gated the same way: run interactively it PAUSES
+ * right after the config step — but only when the config was actually just
+ * written (a fresh install, or an undiffable config the user chose to
+ * overwrite) — so you can review/edit it, then RE-READS the (possibly
+ * edited) config and honors it for every later step. --force runs unattended
+ * (skips the pause and every overwrite prompt, never clobbering an existing
+ * file); --migrate runs the migration in that mode.
+ *
+ * Idempotent: existing assets are skipped, diffed, or prompted as
+ * appropriate, and the migration is never published twice (it is matched by
+ * stem regardless of its timestamp).
  */
 final class SetupCommand extends Command
 {
@@ -51,11 +70,15 @@ final class SetupCommand extends Command
         $interactive = $this->isInteractive();
 
         $this->step(1, 'Publishing config to config/jamesgifford/hold.php');
-        $this->publishConfig($interactive);
+        if (! $this->publishConfig($interactive)) {
+            return self::FAILURE;
+        }
 
         // The pause: review/edit the freshly published config before it drives
         // the rest of setup. Then re-read it so every later step honors edits.
-        if ($interactive) {
+        // Only when the config was actually just WRITTEN — an existing config
+        // that was diffed and left untouched has nothing new to review.
+        if ($interactive && in_array($this->configTarget(), $this->published, true)) {
             $this->reviewPause();
         }
         $this->reloadPublishedConfig();
@@ -112,9 +135,173 @@ final class SetupCommand extends Command
         return $this->input->isInteractive() && ! $this->option('force');
     }
 
-    protected function publishConfig(bool $interactive): void
+    /**
+     * Publish the config (fresh install), or non-destructively diff it
+     * against an already-published one instead of overwriting it.
+     *
+     * @return bool false means "abort the whole setup run" — the user chose
+     *              not to overwrite an undiffable config; true means continue.
+     */
+    protected function publishConfig(bool $interactive): bool
     {
-        $this->publishContents($this->configTarget(), (string) file_get_contents($this->configSource()), 'config/jamesgifford/hold.php', $interactive);
+        $target = $this->configTarget();
+
+        if (! is_file($target)) {
+            $this->writeShippedConfig($target);
+            $this->line('  - published config/jamesgifford/hold.php');
+            $this->published[] = $target;
+
+            return true;
+        }
+
+        $diff = $this->diffPublishedConfig($target);
+
+        if ($diff === null) {
+            return $this->handleUndiffableConfig($target, $interactive);
+        }
+
+        $this->reportConfigDiff($diff);
+
+        return true;
+    }
+
+    /**
+     * Compare the published config against this version's shipped config BY
+     * KEY (dot notation), not by text — a plain array_diff_key, immune to
+     * comment/whitespace/formatting differences. Returns null when the
+     * published file cannot be safely evaluated at all (a syntax error, or
+     * it returns something other than a plain array), which the caller
+     * treats as "can't diff this."
+     *
+     * @return array{missing: array<string, mixed>, orphaned: array<string, mixed>}|null
+     */
+    protected function diffPublishedConfig(string $target): ?array
+    {
+        $published = $this->safeRequireConfigArray($target);
+
+        if ($published === null) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $shipped */
+        $shipped = require $this->configSource();
+
+        $shippedKeys = ConfigKeys::flatten($shipped);
+        $publishedKeys = ConfigKeys::flatten($published);
+
+        return [
+            'missing' => array_diff_key($shippedKeys, $publishedKeys),
+            'orphaned' => array_diff_key($publishedKeys, $shippedKeys),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function safeRequireConfigArray(string $target): ?array
+    {
+        if (! is_file($target)) {
+            return null;
+        }
+
+        try {
+            $value = require $target;
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_array($value) ? $value : null;
+    }
+
+    /**
+     * Report the diff without writing anything — new keys this version
+     * adds, and keys the published config has that this version no longer
+     * reads (most likely renamed or removed — harmless to leave, since
+     * mergeConfigFrom only ever adds missing keys, never strips extras).
+     *
+     * @param  array{missing: array<string, mixed>, orphaned: array<string, mixed>}  $diff
+     */
+    protected function reportConfigDiff(array $diff): void
+    {
+        ['missing' => $missing, 'orphaned' => $orphaned] = $diff;
+
+        if ($missing === [] && $orphaned === []) {
+            $this->line('  - config/jamesgifford/hold.php already has every key this version ships (left untouched)');
+            $this->skipped[] = 'config/jamesgifford/hold.php (already up to date, left untouched)';
+
+            return;
+        }
+
+        $this->line('  - config/jamesgifford/hold.php left untouched — comparing it against this version:');
+        $this->skipped[] = 'config/jamesgifford/hold.php (left untouched — see the diff above)';
+
+        if ($missing !== []) {
+            $this->newLine();
+            $this->line('    New keys this version adds (add whichever you want — see CHANGELOG.md):');
+            foreach ($missing as $key => $value) {
+                $this->line("      {$key} => {$this->exportForDisplay($value)}");
+            }
+        }
+
+        if ($orphaned !== []) {
+            $this->newLine();
+            $this->line('    Keys in your published config this version no longer reads (harmless to keep):');
+            foreach ($orphaned as $key => $value) {
+                $this->line("      {$key} => {$this->exportForDisplay($value)}");
+            }
+        }
+    }
+
+    protected function exportForDisplay(mixed $value): string
+    {
+        return str_replace("\n", ' ', var_export($value, true));
+    }
+
+    /**
+     * The published config could not be safely compared — ask what to do
+     * (interactive), or leave it untouched and say so (unattended, where
+     * there is no one to ask).
+     *
+     * @return bool false means "abort the whole setup run".
+     */
+    protected function handleUndiffableConfig(string $target, bool $interactive): bool
+    {
+        $this->warn('  - could not safely compare your published config against this version');
+        $this->line('    (loading it did not return a plain array — a syntax error, most likely)');
+
+        if (! $interactive) {
+            $this->line('  - left config/jamesgifford/hold.php untouched — run interactively to choose what to do');
+            $this->skipped[] = 'config/jamesgifford/hold.php (left untouched — could not safely compare it)';
+
+            return true;
+        }
+
+        $overwrite = 'Overwrite with the fresh package template (loses your customizations)';
+        $abort = 'Abort setup (keep my file exactly as it is)';
+
+        $choice = $this->choice('What would you like to do?', [$abort, $overwrite], 0);
+
+        if ($choice === $overwrite) {
+            $this->writeShippedConfig($target);
+            $this->line('  - overwrote config/jamesgifford/hold.php with the fresh template');
+            $this->published[] = $target;
+
+            return true;
+        }
+
+        $this->error('Setup aborted — config/jamesgifford/hold.php was left untouched.');
+
+        return false;
+    }
+
+    protected function writeShippedConfig(string $target): void
+    {
+        $directory = dirname($target);
+        if (! is_dir($directory)) {
+            @mkdir($directory, 0755, true);
+        }
+
+        file_put_contents($target, (string) file_get_contents($this->configSource()));
     }
 
     protected function reviewPause(): void
@@ -133,18 +320,16 @@ final class SetupCommand extends Command
 
     /**
      * Re-read the published config file (plain require re-executes each call) so
-     * later steps see any edits made during the pause.
+     * later steps see any edits made during the pause. Safely a no-op — runtime
+     * config is left as whatever it already was — when the file is missing or
+     * cannot be evaluated (the undiffable-and-left-untouched case).
      */
     protected function reloadPublishedConfig(): void
     {
-        $target = $this->configTarget();
+        $values = $this->safeRequireConfigArray($this->configTarget());
 
-        if (is_file($target)) {
-            $values = require $target;
-
-            if (is_array($values)) {
-                config()->set('jamesgifford.hold', $values);
-            }
+        if ($values !== null) {
+            config()->set('jamesgifford.hold', $values);
         }
     }
 
