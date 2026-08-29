@@ -119,7 +119,7 @@ abstract class TestCase extends OrchestraTestCase
     }
 
     /**
-     * The suite runs against MariaDB — the real deployment target — so
+     * The suite runs against MySQL — the real deployment target — so
      * engine-specific behaviour that SQLite cannot express (TIMESTAMP
      * auto-update, index collation, chunked updates under a real unique
      * constraint) is actually exercised rather than assumed.
@@ -130,7 +130,7 @@ abstract class TestCase extends OrchestraTestCase
      */
     protected function defineDatabaseConnection($app): void
     {
-        $connection = (string) (getenv('DB_CONNECTION') ?: 'mariadb');
+        $connection = (string) (getenv('DB_CONNECTION') ?: 'mysql');
 
         $app['config']->set('database.default', $connection);
 
@@ -151,7 +151,7 @@ abstract class TestCase extends OrchestraTestCase
             'port' => (int) (getenv('DB_PORT') ?: 3306),
             'database' => $this->databaseName(),
             'username' => getenv('DB_USERNAME') ?: 'root',
-            'password' => getenv('DB_PASSWORD') !== false ? (string) getenv('DB_PASSWORD') : 'root',
+            'password' => getenv('DB_PASSWORD') !== false ? (string) getenv('DB_PASSWORD') : '',
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',

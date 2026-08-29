@@ -14,7 +14,7 @@ use JamesGifford\Hold\Models\HoldSignup;
  *
  * These exist because SQLite cannot express the failure modes they guard: it has
  * no TIMESTAMP auto-update behaviour and no server-side collation on a unique
- * index. Running the suite against MariaDB is what makes them meaningful.
+ * index. Running the suite against MySQL is what makes them meaningful.
  */
 
 function holdMigrationStubPath(): string
@@ -37,7 +37,7 @@ function holdColumnMeta(string $column): ?array
     return $row === null ? null : (array) $row;
 }
 
-function holdOnMariaDb(): bool
+function holdOnMysqlFamily(): bool
 {
     return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
 }
@@ -54,10 +54,14 @@ it('gives requested_at no implicit ON UPDATE, even where explicit_defaults_for_t
     // stamped by an announcement run — so the implicit ON UPDATE would rewrite
     // "when this address requested the current hold" to "when we last emailed
     // them", corrupting the lifecycle the package documents.
+    // Dropped here, ahead of the SET below: DDL implicitly commits any open
+    // transaction, and MySQL (unlike MariaDB) refuses to change this session
+    // variable while RefreshDatabase's wrapping transaction is still open.
+    Schema::dropIfExists(PackageMigration::TABLE);
+
     DB::statement('SET SESSION explicit_defaults_for_timestamp = 0');
 
     try {
-        Schema::dropIfExists(PackageMigration::TABLE);
         (require holdMigrationStubPath())->up();
 
         $meta = holdColumnMeta('requested_at');
@@ -67,7 +71,7 @@ it('gives requested_at no implicit ON UPDATE, even where explicit_defaults_for_t
     } finally {
         DB::statement('SET SESSION explicit_defaults_for_timestamp = 1');
     }
-})->skip(fn () => ! holdOnMariaDb(), 'MariaDB/MySQL-specific schema behaviour.');
+})->skip(fn () => ! holdOnMysqlFamily(), 'MySQL/MariaDB-specific schema behaviour.');
 
 it('keeps requested_at unchanged when the row is updated for any other reason', function () {
     // The behavioural half of the invariant above: true on every engine, and the
@@ -87,7 +91,7 @@ it('keeps requested_at unchanged when the row is updated for any other reason', 
 // --- Unique email constraint ------------------------------------------------
 
 it('stores one row per address regardless of the casing submitted', function () {
-    // MariaDB's utf8mb4_unicode_ci makes the unique index case-insensitive while
+    // MySQL's utf8mb4_unicode_ci makes the unique index case-insensitive while
     // SQLite and Postgres are case-sensitive. The controller lower-cases before
     // writing, so the outcome is one row either way — assert that rather than
     // depending on the engine's collation.
@@ -107,7 +111,7 @@ it('stores one row per address regardless of the casing submitted', function () 
 it('creates verified_at as a nullable column', function () {
     // Nullable, not driver-specific: insert a row omitting it and confirm the
     // write succeeds and the column reads back null — works identically on
-    // MariaDB and SQLite, unlike an information_schema query.
+    // MySQL and SQLite, unlike an information_schema query.
     DB::table(PackageMigration::TABLE)->insert([
         'email' => 'nullable-verified@example.com',
         'context' => 'prelaunch',

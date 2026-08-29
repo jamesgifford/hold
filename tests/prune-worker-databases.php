@@ -10,7 +10,7 @@ declare(strict_types=1);
  * loads tests/Unit and tests/Feature.
  */
 
-if ((getenv('DB_CONNECTION') ?: 'mariadb') === 'sqlite') {
+if ((getenv('DB_CONNECTION') ?: 'mysql') === 'sqlite') {
     return;
 }
 
@@ -19,7 +19,7 @@ $database = getenv('DB_DATABASE') ?: 'hold_test';
 $pdo = new PDO(
     sprintf('mysql:host=%s;port=%d', getenv('DB_HOST') ?: '127.0.0.1', (int) (getenv('DB_PORT') ?: 3306)),
     getenv('DB_USERNAME') ?: 'root',
-    getenv('DB_PASSWORD') !== false ? (string) getenv('DB_PASSWORD') : 'root',
+    getenv('DB_PASSWORD') !== false ? (string) getenv('DB_PASSWORD') : '',
 );
 
 $statement = $pdo->prepare('SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE ?');

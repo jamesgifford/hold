@@ -79,11 +79,11 @@
         }
     },
     "scripts-descriptions": {
-        "check": "Every quality gate: Pint, PHPStan, and the suite on MariaDB and on SQLite.",
+        "check": "Every quality gate: Pint, PHPStan, and the suite on MySQL and on SQLite.",
         "format": "Apply code style fixes.",
         "format:check": "Check code style without changing files.",
         "analyse": "Static analysis (PHPStan level 6, no baseline).",
-        "test": "Run the suite against MariaDB (the deployment target).",
+        "test": "Run the suite against MySQL (the deployment target).",
         "test:sqlite": "Run the suite against SQLite for a quick offline check.",
         "test:parallel": "Run the suite in parallel, then prune the per-worker schemas it created."
     }

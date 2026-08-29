@@ -977,11 +977,11 @@ The individual gates, if you want them separately:
 | `composer lint` | Pint, check only |
 | `composer format` | Pint, apply fixes |
 | `composer analyse` | PHPStan level 6 (no baseline — findings get fixed, not recorded) |
-| `composer test` | The suite against **MariaDB** |
+| `composer test` | The suite against **MySQL** |
 | `composer test:sqlite` | The suite against SQLite |
 | `composer test:parallel` | The suite in parallel (see note below) |
 
-**The suite defaults to MariaDB**, because that is the deployment target and some
+**The suite defaults to MySQL**, because that is the deployment target and some
 invariants only exist there — notably that `requested_at` never acquires an
 implicit `ON UPDATE CURRENT_TIMESTAMP` on a server with
 `explicit_defaults_for_timestamp=0`. SQLite cannot express that, so running only
@@ -996,7 +996,7 @@ suite has no hidden shared state.
 
 Point it at your own server with `DB_HOST` / `DB_PORT` / `DB_DATABASE` /
 `DB_USERNAME` / `DB_PASSWORD` (defaults: `127.0.0.1:3306`, database `hold_test`,
-user `root`, password `root`). `DB_CONNECTION=sqlite` skips the MariaDB-only
+user `root`, no password). `DB_CONNECTION=sqlite` skips the MySQL-only
 tests and needs no server. CI runs both.
 
 ## License

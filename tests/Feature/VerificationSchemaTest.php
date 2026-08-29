@@ -59,7 +59,7 @@ it('backfills verified_at for rows that existed before the column did', function
 
     // Restore the standard schema (verified_at included) so later tests in
     // this run see the shape they expect — this DDL commits outright on
-    // MariaDB, same as DatabaseSchemaTest's own drop-and-rebuild test.
+    // MySQL, same as DatabaseSchemaTest's own drop-and-rebuild test.
     Schema::dropIfExists(PackageMigration::TABLE);
     (require dirname(__DIR__, 2).'/database/migrations/create_hold_signups_table.php.stub')->up();
 });
