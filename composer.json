@@ -31,7 +31,7 @@
         "illuminate/support": "^13.0"
     },
     "require-dev": {
-        "larastan/larastan": "^3.10",
+        "larastan/larastan": "^3.12",
         "laravel/pint": "^1.30",
         "orchestra/testbench": "^11.2",
         "pestphp/pest": "^5.1",
