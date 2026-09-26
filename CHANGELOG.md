@@ -65,10 +65,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   back into real enforcement for apps that deliberately test the holding
   page. `jamesgifford:hold:enable prelaunch` also now prints a reminder that
   the flag file persists across every environment sharing that storage path.
+- **Published migrations failed a fresh app's `pint --test`.** The
+  "Published by the jamesgifford/hold package" comment was spliced in with
+  no blank line after `declare(strict_types=1);` and two before the imports,
+  so a stock `composer lint:check` flagged both `hold_signups` migrations.
+  The comment now has exactly one blank line on each side. Migrations
+  already published in an app are not rewritten; running `vendor/bin/pint`
+  there fixes them.
 
 ### Testing & tooling
 
 *No runtime effect.*
+
+- New `GeneratedCodeStyleTest` runs `jamesgifford:hold:setup` into a scratch
+  app root (plus the opt-in routes stub), lets Pint (bare `laravel` preset, a
+  fresh app's default) fix a copy of every PHP file written, and fails on any
+  difference.
 
 - Bumped `orchestra/testbench` (`^11.0` → `^11.2`) and `pestphp/pest`
   (`^5.0` → `^5.1`) — both `require-dev`, so nothing a consuming app
