@@ -19,7 +19,8 @@ it('merges every documented config default', function () {
     ]);
 
     expect($config['prelaunch'])->toMatchArray([
-        'status_code' => 200,
+        'status_code' => 503,
+        'retry_after' => 3600,
         'bypass_cookie_name' => 'hold_bypass',
         'bypass_cookie_lifetime_days' => 30,
         'enforce_in_testing' => false,
@@ -29,6 +30,11 @@ it('merges every documented config default', function () {
 
     expect($config['maintenance'])->toMatchArray([
         'retry_after' => 3600,
+    ]);
+
+    expect($config['except'])->toBe([
+        'paths' => [],
+        'routes' => [],
     ]);
 
     expect($config['notifications'])->toMatchArray([

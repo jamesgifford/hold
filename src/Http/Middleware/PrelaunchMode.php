@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use JamesGifford\Hold\HoldState;
 use JamesGifford\Hold\Http\BypassCookie;
+use JamesGifford\Hold\Http\ExcludedRequests;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -21,12 +22,18 @@ use Symfony\Component\HttpFoundation\Response;
  * and it hands off to the next middleware. It only ever short-circuits while a
  * hold is deliberately active.
  *
- * Two escape hatches stay reachable during a hold: the package's own routes
- * (so the signup/preview endpoints keep working) and any request
- * whose bypass cookie carries the CURRENT activation token (so the team can
- * preview the real app). A cookie from a previous activation no longer matches.
+ * Three escape hatches stay reachable during a hold: the package's own routes
+ * (so the signup/preview endpoints keep working), the app's `except` list (so
+ * machine-to-machine endpoints such as payment webhooks keep working — see
+ * ExcludedRequests), and any request whose bypass cookie carries the CURRENT
+ * activation token (so the team can preview the real app). A cookie from a
+ * previous activation no longer matches.
  *
- * A THIRD escape hatch guards against a class of accident rather than a
+ * Everything else gets the holding page, by default with a 503 and a
+ * Retry-After header: a held machine client — an unlisted webhook above all —
+ * must read the response as a failure to retry, never as a delivery.
+ *
+ * A FOURTH escape hatch guards against a class of accident rather than a
  * deliberate preview: the flag file lives under storage_path(), which
  * resolves to the SAME physical directory no matter what APP_ENV is. A hold
  * left on from local browsing (enabled to preview a template change, then
@@ -43,6 +50,7 @@ final class PrelaunchMode
     public function __construct(
         private readonly HoldState $state,
         private readonly BypassCookie $bypass,
+        private readonly ExcludedRequests $exclusions,
         private readonly ViewFactory $views,
     ) {}
 
@@ -56,17 +64,21 @@ final class PrelaunchMode
             return $next($request);
         }
 
-        if ($this->isPackageRoute($request) || $this->hasValidBypass($request)) {
+        if ($this->isPackageRoute($request)
+            || $this->exclusions->matches($request)
+            || $this->hasValidBypass($request)) {
             return $next($request);
         }
+
+        $status = $this->statusCode();
 
         // Resolved through the factory rather than the view() helper: the
         // package's views live under a namespace the helper's view-string type
         // cannot verify, and the factory takes a plain string.
         return response(
             $this->views->make('hold::prelaunch')->render(),
-            $this->statusCode(),
-            ['Content-Type' => 'text/html; charset=UTF-8'],
+            $status,
+            $this->headers($status),
         );
     }
 
@@ -132,8 +144,30 @@ final class PrelaunchMode
 
     private function statusCode(): int
     {
-        $status = (int) config('jamesgifford.hold.prelaunch.status_code', 200);
+        $status = (int) config('jamesgifford.hold.prelaunch.status_code', 503);
 
-        return in_array($status, [200, 503], true) ? $status : 200;
+        return in_array($status, [200, 503], true) ? $status : 503;
+    }
+
+    /**
+     * Response headers for the holding page. Retry-After rides only on a 503:
+     * alongside a 200 it would contradict the status it came with.
+     *
+     * The 3600 default covers a published config that predates
+     * `prelaunch.retry_after` — mergeConfigFrom() merges only the top-level
+     * key, so the app's own `prelaunch` section has no such entry.
+     *
+     * @return array<string, string>
+     */
+    private function headers(int $status): array
+    {
+        $headers = ['Content-Type' => 'text/html; charset=UTF-8'];
+        $retryAfter = (int) config('jamesgifford.hold.prelaunch.retry_after', 3600);
+
+        if ($status === 503 && $retryAfter > 0) {
+            $headers['Retry-After'] = (string) $retryAfter;
+        }
+
+        return $headers;
     }
 }

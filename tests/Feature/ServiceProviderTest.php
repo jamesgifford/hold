@@ -19,7 +19,7 @@ it('boots the service provider and merges package config', function () {
     // Config is merged under the jamesgifford.hold namespace with defaults.
     expect(config('jamesgifford.hold'))->toBeArray()
         ->and(config('jamesgifford.hold.routes.prefix'))->toBe('hold')
-        ->and(config('jamesgifford.hold.prelaunch.status_code'))->toBe(200);
+        ->and(config('jamesgifford.hold.prelaunch.status_code'))->toBe(503);
 });
 
 it('registers all eight namespaced commands', function () {

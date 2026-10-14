@@ -33,8 +33,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for env-forced mode, whose state leaves no trace on the filesystem.
 - New config keys: `prelaunch.forced` (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) and
   `prelaunch.token_store` (`JAMESGIFFORD_HOLD_PRELAUNCH_TOKEN_STORE`).
+- **Excluded requests: `except.paths` and `except.routes`** — URI patterns
+  and route names that pass straight through BOTH hold modes, for
+  machine-to-machine endpoints that must never be answered with a holding
+  page (payment webhooks above all). Paths match exactly like Laravel's own
+  maintenance/CSRF `except` lists; route names accept `*` wildcards and are
+  matched against the request directly (URI, method and domain), since both
+  hold middlewares run before routing. In maintenance mode they apply however
+  the app went down, including a bare `php artisan down`.
+- New config key `prelaunch.retry_after` (default `3600`): the `Retry-After`
+  header sent with a `503` prelaunch page. Never sent with a `200`; `0`/`null`
+  omits it.
 
 ### Changed
+
+- **The prelaunch page now defaults to `503` with a `Retry-After` header**
+  (was `200`). A held webhook answered with the holding page and a `200` was
+  recorded by its sender (Stripe, for one) as delivered and never retried, so
+  the event was silently lost; a `503` makes every held machine client retry.
+  Set `prelaunch.status_code` to `200` to keep an indexable page — and list
+  your webhooks under `except`. An unsupported `status_code` now falls back to
+  `503` rather than `200`. **Apps with a published config keep whatever
+  `status_code` it already says** (the shipped file said `200`), so change it
+  there to pick up the new default; `jamesgifford:hold:setup` reports
+  `prelaunch.retry_after` and `except.*` as new keys to add.
 
 - **`jamesgifford:hold:setup` no longer overwrites an already-published config,
   even to pick up new keys a version adds** — re-running it against an

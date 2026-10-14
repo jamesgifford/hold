@@ -31,7 +31,7 @@ it('renders the holding page for any route when prelaunch is active', function (
     app(HoldState::class)->enable();
 
     $this->get('/')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon')
         ->assertSee('Notify me')
         ->assertDontSee('REAL APP HOMEPAGE');
@@ -41,17 +41,72 @@ it('intercepts routes that do not even exist while active', function () {
     app(HoldState::class)->enable();
 
     $this->get('/some/deep/unrouted/path')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon');
 });
 
-it('returns the configured status code for the holding page', function () {
-    config()->set('jamesgifford.hold.prelaunch.status_code', 503);
+it('responds 503 with a Retry-After header by default', function () {
+    // A machine client that gets held (an unlisted webhook, an uptime check)
+    // must read the holding page as a failure to retry, not a delivery.
     app(HoldState::class)->enable();
 
     $this->get('/')
         ->assertStatus(503)
+        ->assertHeader('Retry-After', '3600')
         ->assertSee('Coming soon');
+});
+
+it('sends the configured prelaunch.retry_after as Retry-After', function () {
+    config()->set('jamesgifford.hold.prelaunch.retry_after', 120);
+    app(HoldState::class)->enable();
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '120');
+});
+
+it('omits Retry-After when prelaunch.retry_after is empty', function (mixed $retryAfter) {
+    config()->set('jamesgifford.hold.prelaunch.retry_after', $retryAfter);
+    app(HoldState::class)->enable();
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertHeaderMissing('Retry-After');
+})->with([
+    'null' => [null],
+    'zero' => [0],
+]);
+
+it('still sends Retry-After for a published prelaunch config that predates the key', function () {
+    // mergeConfigFrom() merges only the top-level key, so an app that published
+    // its config before retry_after existed has a `prelaunch` section without it.
+    $published = config('jamesgifford.hold.prelaunch');
+    unset($published['retry_after']);
+    config()->set('jamesgifford.hold.prelaunch', $published);
+    app(HoldState::class)->enable();
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '3600');
+});
+
+it('returns 200 without Retry-After when status_code is 200', function () {
+    config()->set('jamesgifford.hold.prelaunch.status_code', 200);
+    app(HoldState::class)->enable();
+
+    $this->get('/')
+        ->assertOk()
+        ->assertHeaderMissing('Retry-After')
+        ->assertSee('Coming soon');
+});
+
+it('falls back to 503 for an unsupported status_code', function () {
+    config()->set('jamesgifford.hold.prelaunch.status_code', 302);
+    app(HoldState::class)->enable();
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '3600');
 });
 
 it('lets a request carrying a valid bypass cookie reach the real app', function () {
@@ -146,7 +201,7 @@ it('still intercepts while APP_ENV is testing when enforce_in_testing is explici
     app(HoldState::class)->enable();
 
     $this->get('/')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon')
         ->assertDontSee('REAL APP HOMEPAGE');
 });

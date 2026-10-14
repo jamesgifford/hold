@@ -21,6 +21,7 @@ use JamesGifford\Hold\Console\Commands\UninstallCommand;
 use JamesGifford\Hold\Console\Commands\UnsubscribeCommand;
 use JamesGifford\Hold\Events\HoldSignupCaptured;
 use JamesGifford\Hold\Http\BypassCookie;
+use JamesGifford\Hold\Http\ExcludedRequests;
 use JamesGifford\Hold\Http\Middleware\PrelaunchMode;
 use JamesGifford\Hold\Http\Middleware\PreventRequestsDuringMaintenance;
 use JamesGifford\Hold\Listeners\ScheduleRestoreAnnouncement;
@@ -38,9 +39,11 @@ use JamesGifford\Hold\Listeners\SendTeamHoldNotice;
  *
  * Responsibilities:
  *  - Merge package config under the `jamesgifford.hold` namespace
- *  - Bind HoldState + the bypass-cookie helper as singletons
+ *  - Bind HoldState, the bypass-cookie helper and the `except` list as
+ *    singletons
  *  - Bind the maintenance middleware subclass over the framework's, so the
- *    package routes stay reachable during `php artisan down`
+ *    package routes and the `except` list stay reachable during
+ *    `php artisan down`
  *  - Load + namespace the package views, and register publishable assets
  *  - Push the PrelaunchMode global middleware (a no-op unless a hold is active)
  *  - Register the package routes (when routes.register is true)
@@ -54,6 +57,7 @@ class HoldServiceProvider extends ServiceProvider
 
         $this->app->singleton(HoldState::class);
         $this->app->singleton(BypassCookie::class);
+        $this->app->singleton(ExcludedRequests::class);
 
         // Resolve the package's subclass wherever Laravel references the
         // framework maintenance middleware, so it merges the package routes into

@@ -88,7 +88,7 @@ it('blocks requests while forced via config, exactly like an active flag file', 
     config()->set('jamesgifford.hold.prelaunch.forced', true);
 
     $this->get('/')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon')
         ->assertDontSee('REAL APP HOMEPAGE');
 });
@@ -112,7 +112,7 @@ it('still blocks a stale token cookie under forced mode', function () {
     $name = config('jamesgifford.hold.prelaunch.bypass_cookie_name');
     $this->withCookie($name, 'not-the-current-token')
         ->get('/')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon')
         ->assertDontSee('REAL APP HOMEPAGE');
 });

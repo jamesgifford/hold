@@ -45,18 +45,28 @@ return [
     |
     | Prelaunch ("coming soon") is a package-owned mode toggled by a flag file
     | in storage/jamesgifford/hold/. While active, PrelaunchMode middleware
-    | intercepts every request (except package routes and holders of a valid
-    | bypass cookie) and renders the prelaunch view.
+    | intercepts every request (except package routes, the `except` list
+    | below, and holders of a valid bypass cookie) and renders the prelaunch
+    | view.
     |
     */
 
     'prelaunch' => [
 
-        // HTTP status returned with the prelaunch page. 200 keeps the page
-        // fully indexable ("coming soon" is legitimate content); 503 signals
-        // "not yet available" to crawlers and uptime checks. Only 200 or 503
-        // are supported.
-        'status_code' => 200,
+        // HTTP status returned with the prelaunch page. 503 (the default)
+        // tells every machine client that gets held — an unlisted webhook,
+        // an uptime check, an API consumer — that the request FAILED and
+        // should be retried; a 200 would read as a successful delivery, and
+        // a webhook sender would never retry. 200 makes the page indexable
+        // and shareable as "coming soon" content, but list your webhook
+        // endpoints under `except` first. Only 200 or 503 are supported;
+        // anything else falls back to 503.
+        'status_code' => 503,
+
+        // Seconds sent as the Retry-After header with a 503 prelaunch
+        // response, telling crawlers and well-behaved clients when to come
+        // back. Never sent with a 200. A null or 0 value omits the header.
+        'retry_after' => 3600,
 
         // Name of the cookie that lets a browser bypass the prelaunch page and
         // see the real app (set by the signed /preview route).
@@ -121,6 +131,40 @@ return [
         // maintenance` overrides this. A null or 0 value omits the flag
         // (and so the header) entirely.
         'retry_after' => 3600,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Excluded requests
+    |--------------------------------------------------------------------------
+    |
+    | Requests that always pass straight through BOTH hold modes — prelaunch
+    | and maintenance — and reach your app as if no hold were active. Meant
+    | for machine-to-machine endpoints that must never see a holding page:
+    | payment webhooks (Stripe/Cashier, Paddle), OAuth callbacks, health
+    | checks. A webhook answered with the holding page is lost: the sender
+    | either records it as delivered or retries into the same page.
+    |
+    | The package's own routes (`routes.prefix`) are always excluded and
+    | need no entry here. Maintenance exclusions apply however the app went
+    | down — `jamesgifford:hold:enable maintenance` or a bare `artisan down`.
+    |
+    */
+
+    'except' => [
+
+        // URI patterns, matched exactly like Laravel's own maintenance/CSRF
+        // `except` lists: a path relative to the app root (leading/trailing
+        // slashes ignored), `*` as a wildcard, or a full URL.
+        // e.g. ['stripe/webhook', 'webhooks/*']
+        'paths' => [],
+
+        // Route names, `*` as a wildcard. Holds run before routing, so each
+        // named route is matched against the request directly — URI, HTTP
+        // method and domain all have to fit. Paths are the cheaper check
+        // when you have the choice.
+        // e.g. ['cashier.webhook', 'webhooks.*']
+        'routes' => [],
     ],
 
     /*

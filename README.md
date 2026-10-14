@@ -15,13 +15,14 @@ email everyone — once — when you're ready:
 
 1. **Prelaunch** ("coming soon") — a package-owned mode you toggle with a command.
    While active, global middleware intercepts every request (except the package's
-   own routes and holders of a valid bypass cookie) and renders the prelaunch page
-   with a configurable HTTP status.
+   own routes, [excluded requests](#excluded-requests-webhooks), and holders of a
+   valid bypass cookie) and renders the prelaunch page with a configurable HTTP
+   status — `503` plus `Retry-After` by default.
 2. **Maintenance** — Laravel's native `php artisan down`, left completely
    untouched. The package participates by shipping a maintenance capture page
    (`resources/views/vendor/hold/maintenance.blade.php`, rendered on `down` via a
-   published `errors/503.blade.php` shim) and by keeping its own routes reachable
-   while the app is down.
+   published `errors/503.blade.php` shim) and by keeping its own routes — and
+   your excluded requests — reachable while the app is down.
 
 Hold is the unified interface for both — one command pair (`enable {mode}` /
 `disable`), with only one mode ever active at a time.
@@ -139,7 +140,7 @@ status line so the resulting state is unambiguous.
 | --- | --- | --- |
 | Use when | Before you've launched — a "coming soon" teaser | Temporarily taking a live app down for work |
 | Mechanism | Package flag file + global middleware | Laravel's native `php artisan down` |
-| HTTP status | `200` (indexable) or `503`, configurable | `503` |
+| HTTP status | `503` + `Retry-After` (default) or `200` (indexable), configurable | `503` |
 | Your bypass | Signed preview link (per-activation token) | Laravel secret link (`/{secret}`) |
 | Signup context | `prelaunch` → launch announcement | `maintenance` → "we're back" announcement |
 
@@ -148,9 +149,22 @@ status line so the resulting state is unambiguous.
 `enable prelaunch` writes a flag file under `storage/jamesgifford/hold/` (so it is
 independent of config cache) and prints a **signed preview link**; `disable`
 clears it. The `PrelaunchMode` middleware is registered **globally** — when no
-hold is active it is a near-zero-cost no-op (a single `is_file()` check). The
-response status is configurable (`prelaunch.status_code`): `200` keeps the page
-indexable, `503` signals "not yet available" to crawlers and uptime checks.
+hold is active it is a near-zero-cost no-op (a single `is_file()` check).
+
+**Status code.** The holding page is served with a **`503`** and a
+`Retry-After` header (`prelaunch.retry_after`, default `3600` seconds) by
+default, so anything automated that gets held — an uptime check, an API
+client, and above all a webhook you forgot to exclude — sees a failure it
+will retry rather than a successful delivery. Set `prelaunch.status_code` to
+`200` to make the page indexable and shareable as "coming soon" content
+instead; `Retry-After` is never sent with a `200`. Either way, list your
+webhook endpoints under [`except`](#excluded-requests-webhooks) — with `200`
+that is the *only* thing standing between them and silently lost events.
+
+> **Link previews:** some link-preview fetchers (social networks, chat apps)
+> won't build a preview from a non-`200` response. If the prelaunch page's
+> [sharing metadata](#prelaunch-sharing-metadata) matters to you, use `200`
+> and rely on `except` for your machine endpoints.
 
 **Preview links and bypass cookies are valid per-activation.** Each enable mints
 a fresh random token (stored as the flag file's contents); the preview link and
@@ -211,6 +225,48 @@ Run `jamesgifford:hold:status` any time to see which source (if either) is
 active and whether a bypass token currently exists — worth knowing since
 env-forced state leaves no trace on the filesystem to `ls`.
 
+### Excluded requests (webhooks)
+
+Some requests must **never** see a holding page, in either mode — payment
+webhooks above all. Answer Stripe's webhook with the "coming soon" page and a
+`200`, and Stripe records the event as delivered and never retries it: the
+event is gone. List those endpoints under `except` and they pass straight
+through both prelaunch and maintenance mode, reaching your app as if no hold
+were active:
+
+```php
+// config/jamesgifford/hold.php
+'except' => [
+    // URI patterns — matched exactly like Laravel's own maintenance/CSRF
+    // `except` lists: `*` wildcards, leading/trailing slashes ignored,
+    // or a full URL.
+    'paths' => ['stripe/webhook', 'webhooks/*'],
+
+    // Route names — `*` wildcards allowed.
+    'routes' => ['cashier.webhook'],
+],
+```
+
+- **`except.paths`** is the cheaper check and the one to reach for first.
+- **`except.routes`** matches by route name. Holds run before Laravel's
+  router has resolved the request, so each named route is matched against
+  the request directly — URI, HTTP method **and** domain all have to fit (a
+  `GET` to a `POST`-only webhook URI stays held). This walks the route table,
+  but only while a hold is active.
+- The package's own routes (`routes.prefix`) are always excluded; you don't
+  list them.
+- Maintenance exclusions apply however the app went down —
+  `jamesgifford:hold:enable maintenance` or a bare `php artisan down`. They are
+  merged into the framework's own excluded paths, alongside anything you pass
+  to `preventRequestsDuringMaintenance(except: [...])` in `bootstrap/app.php`.
+- Excluding a request from the hold doesn't exempt it from anything else — a
+  webhook route still needs to be exempt from CSRF verification the usual
+  way.
+
+Anything you *haven't* excluded still gets the prelaunch page's `503` +
+`Retry-After` by default (see [Status code](#prelaunch-coming-soon) above), so
+a sender that does get held knows to try again.
+
 ### Maintenance
 
 `enable maintenance` runs Laravel's native `php artisan down` for you (with a
@@ -254,8 +310,9 @@ needs `--retry` passed manually.
 
 The maintenance page also ships a `<meta name="robots" content="noindex, nofollow">`
 tag — defense-in-depth behind the 503 status, in case a crawler somehow indexes
-the page anyway. The prelaunch page deliberately does **not** get this; it's
-meant to be indexable (see [Prelaunch sharing metadata](#prelaunch-sharing-metadata)).
+the page anyway. The prelaunch page deliberately does **not** get this; with
+`prelaunch.status_code` set to `200` it's meant to be indexable (see
+[Prelaunch sharing metadata](#prelaunch-sharing-metadata)).
 
 #### The maintenance template (shim pattern)
 
@@ -578,13 +635,16 @@ Published to `config/jamesgifford/hold.php`. Key options:
 | `routes.register` | `true` | Register the package routes. `false` = own routing (publish the routes stub). |
 | `routes.prefix` | `hold` | URI prefix for every package route. |
 | `routes.middleware` | `['web']` | Middleware group for the routes. |
-| `prelaunch.status_code` | `200` | HTTP status for the prelaunch page (`200` or `503`). |
+| `prelaunch.status_code` | `503` | HTTP status for the prelaunch page (`503` or `200`; anything else falls back to `503`). `503` tells a held machine client to retry; `200` makes the page indexable. |
+| `prelaunch.retry_after` | `3600` | Seconds sent as the `Retry-After` header with a `503` prelaunch page. Never sent with a `200`; `0`/`null` omits it. |
 | `prelaunch.bypass_cookie_name` | `hold_bypass` | Name of the preview bypass cookie. |
 | `prelaunch.bypass_cookie_lifetime_days` | `30` | Bypass cookie lifetime. |
 | `prelaunch.enforce_in_testing` | `false` | Whether an active prelaunch hold is actually enforced while `APP_ENV` is `testing`. `false` means a leftover flag file no-ops (with a logged warning) instead of intercepting your own test suite. |
 | `prelaunch.forced` | `false` (`JAMESGIFFORD_HOLD_PRELAUNCH_ENABLED`) | Forces prelaunch on regardless of the flag file — for ephemeral hosting. See [Two ways to activate prelaunch](#two-ways-to-activate-prelaunch). Cannot be turned off from the console. |
 | `prelaunch.token_store` | `null` → `cache.default` (`JAMESGIFFORD_HOLD_PRELAUNCH_TOKEN_STORE`) | Cache store that persists the bypass token under env-forced prelaunch. Ignored in command-driven (flag file) mode. |
 | `maintenance.retry_after` | `3600` | Seconds sent as the `Retry-After` header when maintenance is enabled via `enable maintenance` (`--retry` overrides; `0`/`null` omits it). Only applies to holds enabled through Hold — a bare `artisan down` needs `--retry` passed manually. |
+| `except.paths` | `[]` | URI patterns that pass straight through both hold modes (e.g. `stripe/webhook`, `webhooks/*`). See [Excluded requests](#excluded-requests-webhooks). |
+| `except.routes` | `[]` | Route names (`*` wildcards allowed) that pass straight through both hold modes (e.g. `cashier.webhook`). |
 | `appearance.*` | see [Appearance](#appearance) | Set colors once for every template, or scope them to just the holding pages or just the mail templates. |
 | `notifications.team_addresses` | `[]` | Who receives the "hold enabled" notice. |
 | `notifications.send_signup_receipt` | `false` | Email each new signup a receipt. |
@@ -905,9 +965,10 @@ their palette, header/logo, and copy model.
 The package binds a subclass of Laravel's
 `Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance` in the
 container. Wherever Laravel resolves that framework middleware, it gets the
-subclass, which merges the package's route URIs (built from `routes.prefix`) into
-the maintenance `except` list — so the signup/preview routes stay
-reachable during `down`.
+subclass, which merges the package's route URIs (built from `routes.prefix`) and
+your `except.paths` into the maintenance `except` list, and also lets
+`except.routes` through — so the signup/preview routes and your excluded
+endpoints stay reachable during `down`.
 
 This is **just a container binding**: no core file is modified, and
 `composer remove jamesgifford/hold` removes it automatically. This is also why

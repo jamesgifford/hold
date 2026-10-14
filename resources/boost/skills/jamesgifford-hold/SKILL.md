@@ -37,10 +37,12 @@ active; run `disable` first.
    `jamesgifford:hold:preview` to mint/re-mint one for either source.
 
 A GLOBAL `PrelaunchMode` middleware renders the holding page for every request
-while EITHER source is active, except the package's own routes and holders of
-a valid bypass cookie. The response status is
-`config('jamesgifford.hold.prelaunch.status_code')` (200 to stay indexable, or
-503). Because `storage_path()` is the same physical directory regardless of
+while EITHER source is active, except the package's own routes, the `except`
+list (see below), and holders of a valid bypass cookie. The response status is
+`config('jamesgifford.hold.prelaunch.status_code')` — 503 by default, with a
+`Retry-After` header from `prelaunch.retry_after`, so a held machine client
+retries instead of treating the page as a delivery; 200 makes the page
+indexable (no `Retry-After`). Because `storage_path()` is the same physical directory regardless of
 `APP_ENV`, a flag file left over from local browsing would otherwise silently
 intercept a consuming app's own test suite — `PrelaunchMode` no-ops (and logs
 a warning) while `app()->environment('testing')` unless
@@ -48,9 +50,10 @@ a warning) while `app()->environment('testing')` unless
 
 **Maintenance** — Laravel's native `php artisan down`, untouched (no env-var
 activation for this mode — only the native mechanism). The package keeps its
-own routes reachable while down (a container-bound subclass of
-`PreventRequestsDuringMaintenance` merges the package route URIs into the
-maintenance `except` list). The maintenance capture page is
+own routes and the `except` list reachable while down (a container-bound
+subclass of `PreventRequestsDuringMaintenance` merges the package route URIs
+and `except.paths` into the maintenance `except` list, and lets
+`except.routes` through). The maintenance capture page is
 `resources/views/vendor/hold/maintenance.blade.php`; `resources/views/errors/503.blade.php`
 is a thin shim that `@include`s it. You can run `enable maintenance` (it invokes
 `down` with a bypass secret) or a plain `php artisan down` / `php artisan up`
@@ -59,6 +62,16 @@ by auto-disabling prelaunch (one hold at a time). Self-heal can't clear an
 **env-forced** hold (nothing to unset from a listener) — it logs a WARNING that
 both modes are now active instead; maintenance still wins at request time
 (its middleware runs first).
+
+**Excluded requests (webhooks)** — `config('jamesgifford.hold.except.paths')`
+(URI patterns, matched like Laravel's maintenance/CSRF `except` lists) and
+`config('jamesgifford.hold.except.routes')` (route names, `*` wildcards) pass
+straight through BOTH modes. Any machine-to-machine endpoint — payment
+webhooks above all (e.g. Cashier's `stripe/webhook` / `cashier.webhook`) —
+belongs here: answered with the holding page it is lost. Route names are
+matched against the request directly (the hold runs before routing), so URI,
+method and domain must all fit. Do NOT add the package's own routes; they are
+always excluded.
 
 ## Signup capture
 
@@ -163,7 +176,10 @@ Published to `config/jamesgifford/hold.php`:
 
 - `routes.register` / `routes.prefix` / `routes.middleware` — set `register` false
   to own routing (publish the routes stub); keep `prefix` in sync everywhere.
-- `prelaunch.status_code` (200/503), `prelaunch.bypass_cookie_name` / `..._lifetime_days`.
+- `prelaunch.status_code` (default 503; 200 for an indexable page, anything else
+  falls back to 503), `prelaunch.retry_after` (default 3600 — `Retry-After`
+  seconds sent with a 503 only; `0`/`null` omits it),
+  `prelaunch.bypass_cookie_name` / `..._lifetime_days`.
 - `prelaunch.enforce_in_testing` (default `false`) — whether an active prelaunch
   hold is actually enforced while `APP_ENV` is `testing`; `false` means a
   leftover flag file no-ops instead of intercepting your own test suite.
@@ -175,6 +191,8 @@ Published to `config/jamesgifford/hold.php`:
 - `maintenance.retry_after` (default 3600) — seconds sent as the `Retry-After`
   header when maintenance is enabled through Hold; `--retry` on `enable` overrides
   it; `0`/`null` omits the header. A bare `artisan down` needs `--retry` manually.
+- `except.paths` / `except.routes` (both default `[]`) — URI patterns and route
+  names that pass straight through both hold modes; list every webhook here.
 - `notifications.team_addresses` (empty = no team notice), `notifications.send_signup_receipt`,
   `notifications.auto_announce_on_up`, `notifications.announce_delay_minutes` (the
   change-of-mind delay before an auto-announce sends). Auto-announce needs a queue
@@ -263,6 +281,9 @@ Published to `config/jamesgifford/hold.php`:
   successful `/verify` click clears `unsubscribed_at` (besides the operator
   `--resubscribe` command).
 - Do NOT hardcode the route prefix — read `config('jamesgifford.hold.routes.prefix')`.
+- Do NOT exempt a webhook from a hold with your own middleware or by setting
+  `prelaunch.status_code` to 200 — add it to `except.paths` / `except.routes`,
+  which covers both modes.
 - Do NOT assume `auto_announce_on_up` works on a `sync` queue — it deliberately
   refuses there, because the delay (and so the change-of-mind window) is discarded.
 - Do NOT point `models.signup` at a class that does not implement

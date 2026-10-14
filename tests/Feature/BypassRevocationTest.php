@@ -80,7 +80,7 @@ it('revokes old preview links and cookies when the hold is re-enabled', function
     // The OLD cookie no longer bypasses — the holding page is shown.
     $this->withUnencryptedCookie($name, $oldCookieValue)
         ->get('/')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon')
         ->assertDontSee('REAL APP HOMEPAGE');
 
@@ -112,13 +112,13 @@ it('does not crash and grants no bypass when the flag file is empty', function (
         ->and($state->token())->toBeNull();
 
     // Middleware still renders the holding page, no error.
-    $this->get('/')->assertOk()->assertSee('Coming soon');
+    $this->get('/')->assertStatus(503)->assertSee('Coming soon');
 
     // No cookie can satisfy a tokenless activation.
     $name = config('jamesgifford.hold.prelaunch.bypass_cookie_name');
     $this->withCookie($name, 'anything')
         ->get('/')
-        ->assertOk()
+        ->assertStatus(503)
         ->assertSee('Coming soon')
         ->assertDontSee('REAL APP HOMEPAGE');
 });
