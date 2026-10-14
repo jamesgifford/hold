@@ -12,6 +12,9 @@ beforeEach(function () {
 });
 
 it('binds the package maintenance middleware subclass over the framework one', function () {
+    // Larastan resolves app() by booting this package's provider, so it already
+    // "knows" the answer: the binding this test guards at runtime.
+    // @phpstan-ignore pest.expectation.redundant
     expect(app(FrameworkMiddleware::class))->toBeInstanceOf(PreventRequestsDuringMaintenance::class);
 });
 

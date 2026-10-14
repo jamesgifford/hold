@@ -29,8 +29,7 @@ final class UnsubscribeCommand extends Command
 
     public function handle(): int
     {
-        $argument = $this->argument('email');
-        $email = Str::lower(trim(is_string($argument) ? $argument : ''));
+        $email = Str::lower(trim($this->argument('email')));
 
         $signup = Hold::signups()->where('email', $email)->first();
 

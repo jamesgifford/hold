@@ -72,9 +72,6 @@ final class PrelaunchMode
 
         $status = $this->statusCode();
 
-        // Resolved through the factory rather than the view() helper: the
-        // package's views live under a namespace the helper's view-string type
-        // cannot verify, and the factory takes a plain string.
         return response(
             $this->views->make('hold::prelaunch')->render(),
             $status,

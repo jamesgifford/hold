@@ -5,6 +5,25 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Testing & tooling
+
+*No runtime effect.*
+
+- **Static analysis had been failing in CI since Larastan 3.12**, which
+  started enforcing its `view-string` type on the view factory and
+  `MailMessage::view()`. Larastan checks a literal view name by asking the
+  app it boots whether the view exists, and that app never registered this
+  package, so every `hold::` view looked missing. A new `testbench.yaml`
+  (dev-only, export-ignored) registers the provider for analysis, so view
+  names are now genuinely verified. Two findings that surfaced once Larastan
+  could see the real app are resolved: a redundant `is_string()` guard in
+  `jamesgifford:hold:unsubscribe` is gone, and the maintenance-binding test
+  carries an inline ignore saying why its assertion only looks redundant.
+  Local runs kept passing because `composer.lock` is untracked and still
+  pinned Larastan 3.10.
+
 ## [1.5.1] - 2026-10-14
 
 ### Fixed

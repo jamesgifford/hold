@@ -19,9 +19,9 @@ uses(TestCase::class)->in('Feature');
 /**
  * Render a package view by name.
  *
- * The `view()` helper is typed to accept only a `view-string` that static
- * analysis can resolve on disk, which it cannot do for the package's `hold::`
- * namespace. The view factory contract takes a plain string.
+ * Both the `view()` helper and the view factory take a `view-string`, which
+ * static analysis can only prove for a literal view name. This takes any
+ * string, so a test can render names it loops over.
  *
  * @param  array<string, mixed>  $data
  */

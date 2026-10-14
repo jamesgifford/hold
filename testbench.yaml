@@ -1,0 +1,6 @@
+# Read by Larastan to build the app it analyses this package against. Without
+# the provider there, the `hold::` view namespace doesn't exist, so every
+# literal view name fails Larastan's view-string check (enforced on the view
+# factory and MailMessage::view() since Larastan 3.12).
+providers:
+  - JamesGifford\Hold\HoldServiceProvider
