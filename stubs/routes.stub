@@ -41,12 +41,15 @@ Route::get('verify', VerifyController::class)
 // Non-expiring signature (URL::signedRoute, not temporarySignedRoute) — old
 // emails must keep working. The POST is the RFC 8058 one-click endpoint an
 // email client calls automatically, carrying no CSRF token, on the exact
-// same signed URL as the GET link.
+// same signed URL as the GET link. It needs a name of its own — `route:cache`
+// rejects two routes sharing one — but nothing mints a URL from it: links are
+// minted from `hold.unsubscribe`, and the signature covers the URL, not the
+// route name.
 Route::get('unsubscribe', UnsubscribeController::class)
     ->name('hold.unsubscribe')
     ->middleware('signed');
 
 Route::post('unsubscribe', UnsubscribeController::class)
-    ->name('hold.unsubscribe')
+    ->name('hold.unsubscribe.one-click')
     ->middleware('signed')
     ->withoutMiddleware([PreventRequestForgery::class]);

@@ -70,6 +70,19 @@ class RoutesDisabledTest extends TestCase
         $this->assertDatabaseHas('hold_signups', ['email' => 'stub@example.com']);
     }
 
+    public function test_the_published_routes_stub_survives_route_cache(): void
+    {
+        // The stub is copied into the app, so a duplicate name in it breaks
+        // the app's `php artisan route:cache` just as the package's own would.
+        Route::middleware('web')->prefix('hold')->group(dirname(__DIR__, 2).'/stubs/routes.stub');
+
+        $this->assertSame([], holdDuplicateRouteNames());
+
+        holdCacheRoutes();
+
+        $this->assertTrue(Route::has('hold.unsubscribe'));
+    }
+
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);

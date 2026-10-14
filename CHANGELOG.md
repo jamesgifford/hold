@@ -5,6 +5,31 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`php artisan route:cache` — and so `php artisan optimize` — failed in
+  every app using the package.** The `GET` and RFC 8058 one-click `POST`
+  `/unsubscribe` routes were both named `hold.unsubscribe`, and Laravel
+  refuses to cache two routes sharing a name. The `POST` is now
+  `hold.unsubscribe.one-click`; `hold.unsubscribe` stays on the `GET`, the
+  name every emailed link and `List-Unsubscribe` header is minted from, so no
+  URL changes and links already sent keep working. **Apps that own their
+  routing** (`routes.register => false`) run their own copy of the stub in
+  `routes/hold.php`: rename the `POST` route there by hand, or re-publish it
+  with `php artisan vendor:publish --tag=jamesgifford-hold-routes --force` if
+  that copy was never edited.
+
+### Testing & tooling
+
+*No runtime effect.*
+
+- New `RouteCacheTest` asserts every package route name is unique, then
+  caches the route table the way `route:cache` does and serves both
+  unsubscribe methods from the cached table. `RoutesDisabledTest` checks the
+  published routes stub for unique names and a clean cache too.
+
 ## [1.5.0] - 2026-10-14
 
 ### Added

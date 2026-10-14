@@ -3,7 +3,11 @@
 declare(strict_types=1);
 
 use Illuminate\Contracts\View\Factory;
+use Illuminate\Foundation\Console\RouteCacheCommand;
+use Illuminate\Routing\Route as RouteDefinition;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use JamesGifford\Hold\Tests\TestCase;
 
@@ -76,4 +80,55 @@ function publishEditedMail(string $template, array $edits): void
 
     View::prependNamespace('hold', $dir);
     View::flushFinderCache();
+}
+
+/**
+ * Route names claimed by more than one registered route — each one a name
+ * `php artisan route:cache` refuses to cache.
+ *
+ * @return array<int, string>
+ */
+function holdDuplicateRouteNames(): array
+{
+    return collect(Route::getRoutes()->getRoutes())
+        ->map(fn (RouteDefinition $route): ?string => $route->getName())
+        ->filter()
+        ->duplicates()
+        ->unique()
+        ->values()
+        ->all();
+}
+
+/**
+ * Cache the current route table exactly as `php artisan route:cache` does —
+ * prepare every route for serialization, compile, var_export into the
+ * framework's own cache stub — then load that file the way a cached app
+ * boots. Throws the command's own LogicException on a duplicate route name.
+ *
+ * The command itself can't be called here: it builds a FRESH app from the
+ * Testbench skeleton, which never registers this package, so it would cache a
+ * table without the routes under test and pass no matter what they contain.
+ */
+function holdCacheRoutes(): void
+{
+    $routes = Route::getRoutes();
+    assert($routes instanceof RouteCollection);
+
+    $routes->refreshNameLookups();
+    $routes->refreshActionLookups();
+
+    foreach ($routes as $route) {
+        $route->prepareForSerialization();
+    }
+
+    $stub = dirname((string) (new ReflectionClass(RouteCacheCommand::class))->getFileName()).'/stubs/routes.stub';
+    $path = sys_get_temp_dir().'/hold-routes-'.uniqid().'.php';
+
+    File::put($path, str_replace('{{routes}}', var_export($routes->compile(), true), File::get($stub)));
+
+    try {
+        require $path;
+    } finally {
+        File::delete($path);
+    }
 }
